@@ -1,7 +1,7 @@
 # Проект «Большое путешествие»
 
-* Студент: [Игорь Ткаченко](https://up.htmlacademy.ru/ecmascript-individual/2/user/1399877).
-* Наставник: `Неизвестно`.
+- Студент: [Игорь Ткаченко](https://up.htmlacademy.ru/ecmascript-individual/2/user/1399877).
+- Наставник: [Сергей Андреев](https://htmlacademy.ru/profile/id812127).
 
 ---
 
