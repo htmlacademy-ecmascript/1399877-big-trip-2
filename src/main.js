@@ -1,12 +1,12 @@
-import Presenter from './presenter/presenter';
+import AppPresenter from './presenter/app-presenter';
 
 const tripHeaderContainer = document.querySelector('.trip-main');
 const tripMainContainer = document.querySelector('.trip-events');
 
-const mainPresenter = new Presenter({
+const appPresenter = new AppPresenter({
   headerContainer: tripHeaderContainer,
   mainContainer: tripMainContainer
 });
 
-mainPresenter.init();
+appPresenter.init();
 
