@@ -14,11 +14,13 @@ function createPictures () {
   return pictures;
 }
 
-export function createDestination() {
-  return {
+export function createDestinations() {
+  return CITIES.map((city) => ({
+
     id: crypto.randomUUID(),
-    name: getRandomValue(CITIES),
+    name: city,
     description: getRandomItems(DESCRIPTIONS).join(' '),
     pictures: createPictures()
-  };
+
+  }));
 }
