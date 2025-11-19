@@ -23,7 +23,13 @@ export default class AppPresenter {
     render(new FiltersView(), this.headerContainer);
     render(new SortListView(), this.mainContainer);
     render(this.eventListContainer, this.mainContainer);
-    render(new EventItemEdit(), this.eventListContainer.getElement());
+
+    render(new EventItemEdit({
+      point: this.points[0],
+      destination: this.destinations.getById(this.points[0].destination),
+      offers: this.offers.getByType(this.points[0].type)
+    }), this.eventListContainer.getElement());
+
     this.points.forEach((point) => {
       render(new EventItemView({
         point: point,

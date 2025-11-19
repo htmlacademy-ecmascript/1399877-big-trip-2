@@ -1,5 +1,5 @@
 import { getRandomInteger} from '../utils';
-import { getDate } from './utils';
+import { getDate, getRandomItems } from './utils';
 import { PRICE } from './const';
 
 
@@ -12,6 +12,6 @@ export function createPoint(type ,destinationId, offersIds) {
     basePrice: getRandomInteger(PRICE.MIN, PRICE.MAX),
     isFavorite: !!getRandomInteger(0,1),
     destination: destinationId,
-    offers: offersIds
+    offers: getRandomItems(offersIds)
   };
 }
