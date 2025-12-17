@@ -5,9 +5,11 @@ import EventsListView from '../view/event/events-list-view';
 import EventItemView from '../view/event/event-item-view';
 import EventFormView from '../view/event/event-form-view';
 import { BLANK_POINT } from '../const';
+import TripInfoView from '../view/header/trip-info-view';
 
 export default class AppPresenter {
   #headerContainer;
+  #tripInfo = null;
   #mainContainer;
   #eventListContainer;
   #pointModel;
@@ -21,6 +23,7 @@ export default class AppPresenter {
   constructor({ headerContainer, mainContainer, pointModel, destinationModel, offerModel }) {
     this.#headerContainer = headerContainer;
     this.#mainContainer = mainContainer;
+    this.#tripInfo = new TripInfoView();
     this.#eventListContainer = new EventsListView();
     this.#pointModel = pointModel;
     this.#offerModel = offerModel;
@@ -139,7 +142,7 @@ export default class AppPresenter {
   init() {
     this.#addButton = document.querySelector('.trip-main__event-add-btn');
     this.#addButton.addEventListener('click', this.#handleCreateButtonClick);
-
+    render(this.#tripInfo, this.#headerContainer);
     render(new FiltersView(), this.#headerContainer);
     render(new SortListView(), this.#mainContainer);
     render(this.#eventListContainer, this.#mainContainer);

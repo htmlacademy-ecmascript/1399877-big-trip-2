@@ -1,6 +1,7 @@
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import {CITIES} from './mock/const';
+import { FILTER_TYPES } from './const';
 
 dayjs.extend(duration);
 
@@ -61,3 +62,16 @@ export function isFavoriteClass(isFavorite) {
 export function isEditMode (point) {
   return Boolean(point.id);
 }
+
+const isDateFuture = (dateFrom) => dayjs().isBefore(dateFrom);
+
+const isDatePast = (dateTo) => dayjs().isAfter(dateTo);
+
+const isDatePresent = (dateFrom, dateTo) => dayjs().isAfter(dateFrom) && dayjs().isBefore(dateTo);
+
+export const filter = {
+  [FILTER_TYPES.EVERYTHING] : (points) => [...points],
+  [FILTER_TYPES.FUTURE] : (points) => points.filter((point) => isDateFuture(point)),
+  [FILTER_TYPES.PRESENT] : (points) => points.filter((point) => isDatePresent(point)),
+  [FILTER_TYPES.PAST] : (points) => points.filter((point) => isDatePast(point)),
+};

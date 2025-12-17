@@ -27,3 +27,10 @@ export const BLANK_POINT = {
   offers: [],
   type: 'flight'
 };
+
+export const FILTER_TYPES = {
+  FUTURE: 'future',
+  PRESENT: 'present',
+  PAST: 'past',
+  EVERYTHING: 'everything'
+};
