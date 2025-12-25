@@ -56,24 +56,32 @@ function createEventItemTemplate ({point, pointDestination, pointOffer}) {
 }
 
 export default class EventItemView extends AbstractView{
-  #point;
-  #pointDestination;
-  #pointOffer;
-  #handleEditClick;
+  #point = null;
+  #pointDestination = null;
+  #pointOffer = null;
+
+  #handleEditClick = null;
+  #onFavoriteClick = null;
 
   constructor (params) {
     super();
     this.#point = params.point;
     this.#pointDestination = params.pointDestination;
     this.#pointOffer = params.pointOffer;
+
     this.#handleEditClick = params.onEditClick;
+    this.#onFavoriteClick = params.onFavoriteClick;
 
     this.#setInnerHandlers();
   }
 
   #setInnerHandlers() {
     this.element.querySelector('.event__rollup-btn').addEventListener('click', () => {
-      this.#handleEditClick();
+      this.#handleEditClick?.();
+    });
+
+    this.element.querySelector('.event__favorite-btn').addEventListener('click', () => {
+      this.#onFavoriteClick?.();
     });
   }
 

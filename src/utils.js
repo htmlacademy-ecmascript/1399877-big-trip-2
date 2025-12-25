@@ -64,14 +64,12 @@ export function isEditMode (point) {
 }
 
 const isDateFuture = (dateFrom) => dayjs().isBefore(dateFrom);
-
 const isDatePast = (dateTo) => dayjs().isAfter(dateTo);
-
 const isDatePresent = (dateFrom, dateTo) => dayjs().isAfter(dateFrom) && dayjs().isBefore(dateTo);
 
 export const filter = {
-  [FILTER_TYPES.EVERYTHING] : (points) => [...points],
-  [FILTER_TYPES.FUTURE] : (points) => points.filter((point) => isDateFuture(point)),
-  [FILTER_TYPES.PRESENT] : (points) => points.filter((point) => isDatePresent(point)),
-  [FILTER_TYPES.PAST] : (points) => points.filter((point) => isDatePast(point)),
+  [FILTER_TYPES.EVERYTHING]: (points) => [...points],
+  [FILTER_TYPES.FUTURE]: (points) => points.filter((p) => p.dateFrom && isDateFuture(p.dateFrom)),
+  [FILTER_TYPES.PRESENT]: (points) => points.filter((p) => p.dateFrom && p.dateTo && isDatePresent(p.dateFrom, p.dateTo)),
+  [FILTER_TYPES.PAST]: (points) => points.filter((p) => p.dateTo && isDatePast(p.dateTo)),
 };

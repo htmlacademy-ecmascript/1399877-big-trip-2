@@ -14,13 +14,16 @@ export default class EventPresenter {
   #eventComponent = null;
   #eventFormComponent = null;
   #isEditBlocked = null;
+  #onPointChange = null;
 
-  constructor({ eventListContainer, onFormOpen, isEditBlocked, onTypeChange }) {
+  constructor({ eventListContainer, onFormOpen, isEditBlocked, onTypeChange, onPointChange }) {
     this.#eventListContainer = eventListContainer;
     this.#onFormOpen = onFormOpen;
     this.#isEditBlocked = isEditBlocked;
     this.#onTypeChange = onTypeChange;
+    this.#onPointChange = onPointChange;
   }
+
 
   #replaceEvent(oldComponent, newComponent) {
     replace(newComponent, oldComponent);
@@ -83,15 +86,26 @@ export default class EventPresenter {
       point: eventData.point,
       pointDestination: eventData.pointDestination,
       pointOffer: eventData.pointOffer,
+
       onEditClick: () => {
         if (this.#isEditBlocked?.()) {
           return;
         }
 
-        this.#onFormOpen?.(this);
+        this.#onFormOpen?.();
         this.#replaceEvent(this.#eventComponent, this.#eventFormComponent);
+      },
+
+      onFavoriteClick: () => {
+        const nextPoint = {
+          ...this.#eventData.point,
+          isFavorite: !this.#eventData.point.isFavorite
+        };
+
+        this.#onPointChange?.(nextPoint);
       }
     });
+
 
     this.#eventFormComponent = this.#createEventForm();
 
@@ -103,9 +117,55 @@ export default class EventPresenter {
       return;
     }
 
-    replace(this.#eventComponent, this.#eventFormComponent);
-
-    this.#isFormOpen = false;
-    document.removeEventListener('keydown', this.#escKeyDownHandler);
+    this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
   }
+
+  destroy() {
+    document.removeEventListener('keydown', this.#escKeyDownHandler);
+
+    this.#eventComponent?.element?.remove();
+    this.#eventFormComponent?.element?.remove();
+
+    this.#eventComponent = null;
+    this.#eventFormComponent = null;
+    this.#isFormOpen = false;
+  }
+
+  update(eventData) {
+    this.#eventData = eventData;
+
+    const prevEventComponent = this.#eventComponent;
+    const prevEventFormComponent = this.#eventFormComponent;
+
+    this.#eventComponent = new EventItemView({
+      point: eventData.point,
+      pointDestination: eventData.pointDestination,
+      pointOffer: eventData.pointOffer,
+      onEditClick: () => {
+        if (this.#isEditBlocked?.()) {
+          return;
+        }
+
+        this.#onFormOpen?.();
+        this.#replaceEvent(this.#eventComponent, this.#eventFormComponent);
+      },
+      onFavoriteClick: () => {
+        const nextPoint = {
+          ...this.#eventData.point,
+          isFavorite: !this.#eventData.point.isFavorite
+        };
+
+        this.#onPointChange?.(nextPoint);
+      }
+    });
+
+    this.#eventFormComponent = this.#createEventForm();
+
+    if (this.#isFormOpen) {
+      replace(this.#eventFormComponent, prevEventFormComponent);
+    } else {
+      replace(this.#eventComponent, prevEventComponent);
+    }
+  }
+
 }

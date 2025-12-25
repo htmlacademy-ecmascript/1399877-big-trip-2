@@ -34,3 +34,11 @@ export const FILTER_TYPES = {
   PAST: 'past',
   EVERYTHING: 'everything'
 };
+
+export const SORT_TYPE = {
+  DAY: 'day',
+  EVENT: 'event',
+  TIME: 'time',
+  PRICE: 'price',
+  OFFERS: 'offers'
+};

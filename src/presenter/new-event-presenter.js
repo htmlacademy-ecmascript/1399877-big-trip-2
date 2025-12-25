@@ -20,7 +20,10 @@ export default class NewEventPresenter {
     this.#newEventFormComponent = new EventFormView({
       ...this.#eventData,
       onTypeChange: this.#handleTypeChange,
-      onSubmit: (evt) => { evt.preventDefault(); this.destroy(); },
+      onSubmit: (evt) => {
+        evt.preventDefault();
+        this.destroy();
+      },
       onClose: () => this.destroy()
     });
 
