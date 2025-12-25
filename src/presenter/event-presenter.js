@@ -3,18 +3,20 @@ import EventItemView from '../view/event/event-item-view';
 import EventFormView from '../view/event/event-form-view';
 
 export default class EventPresenter {
-  #eventData = null;
-  #onTypeChange = null;
-
-  #isFormOpen = false;
-  #onFormOpen = null;
   #eventListContainer = null;
 
-  #escKeyDownHandler = null;
+  #onFormOpen = null;
+  #isEditBlocked = null;
+  #onTypeChange = null;
+  #onPointChange = null;
+
+  #eventData = null;
+  #isFormOpen = false;
+
   #eventComponent = null;
   #eventFormComponent = null;
-  #isEditBlocked = null;
-  #onPointChange = null;
+
+  #escKeyDownHandler = null;
 
   constructor({ eventListContainer, onFormOpen, isEditBlocked, onTypeChange, onPointChange }) {
     this.#eventListContainer = eventListContainer;
@@ -24,92 +26,30 @@ export default class EventPresenter {
     this.#onPointChange = onPointChange;
   }
 
-
-  #replaceEvent(oldComponent, newComponent) {
-    replace(newComponent, oldComponent);
-
-    this.#isFormOpen = newComponent === this.#eventFormComponent;
-
-    if (this.#isFormOpen) {
-      document.addEventListener('keydown', this.#escKeyDownHandler);
-    } else {
-      document.removeEventListener('keydown', this.#escKeyDownHandler);
-    }
-  }
-
-  #handleTypeChange(newType) {
-    const nextPoint = {
-      ...this.#eventData.point,
-      type: newType,
-      offers: []
-    };
-
-    const nextEventData = this.#onTypeChange(nextPoint);
-
-    const prevForm = this.#eventFormComponent;
-
-    this.#eventData = nextEventData;
-    this.#eventFormComponent = this.#createEventForm();
-
-    replace(this.#eventFormComponent, prevForm);
-  }
-
-  #createEventForm() {
-    return new EventFormView({
-      point: this.#eventData.point,
-      pointDestination: this.#eventData.pointDestination,
-      pointOffer: this.#eventData.pointOffer,
-
-      onTypeChange: (newType) => this.#handleTypeChange(newType),
-
-      onSubmit: (evt) => {
-        evt.preventDefault();
-        this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
-      },
-      onClose: () => {
-        this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
-      }
-    });
-  }
-
   init(eventData) {
     this.#eventData = eventData;
+    this.#escKeyDownHandler = this.#createEscKeyDownHandler();
 
-    this.#escKeyDownHandler = (evt) => {
-      if (evt.key === 'Escape') {
-        evt.preventDefault();
-        this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
-      }
-    };
-
-    this.#eventComponent = new EventItemView({
-      point: eventData.point,
-      pointDestination: eventData.pointDestination,
-      pointOffer: eventData.pointOffer,
-
-      onEditClick: () => {
-        if (this.#isEditBlocked?.()) {
-          return;
-        }
-
-        this.#onFormOpen?.();
-        this.#replaceEvent(this.#eventComponent, this.#eventFormComponent);
-      },
-
-      onFavoriteClick: () => {
-        const nextPoint = {
-          ...this.#eventData.point,
-          isFavorite: !this.#eventData.point.isFavorite
-        };
-
-        this.#onPointChange?.(nextPoint);
-      }
-    });
-
-
+    this.#eventComponent = this.#createEventItem();
     this.#eventFormComponent = this.#createEventForm();
 
     render(this.#eventComponent, this.#eventListContainer);
+  }
+
+  update(eventData) {
+    this.#eventData = eventData;
+
+    const prevEventComponent = this.#eventComponent;
+    const prevEventFormComponent = this.#eventFormComponent;
+
+    this.#eventComponent = this.#createEventItem();
+    this.#eventFormComponent = this.#createEventForm();
+
+    if (this.#isFormOpen) {
+      replace(this.#eventFormComponent, prevEventFormComponent);
+    } else {
+      replace(this.#eventComponent, prevEventComponent);
+    }
   }
 
   resetForm() {
@@ -131,41 +71,91 @@ export default class EventPresenter {
     this.#isFormOpen = false;
   }
 
-  update(eventData) {
-    this.#eventData = eventData;
-
-    const prevEventComponent = this.#eventComponent;
-    const prevEventFormComponent = this.#eventFormComponent;
-
-    this.#eventComponent = new EventItemView({
-      point: eventData.point,
-      pointDestination: eventData.pointDestination,
-      pointOffer: eventData.pointOffer,
-      onEditClick: () => {
-        if (this.#isEditBlocked?.()) {
-          return;
-        }
-
-        this.#onFormOpen?.();
-        this.#replaceEvent(this.#eventComponent, this.#eventFormComponent);
-      },
-      onFavoriteClick: () => {
-        const nextPoint = {
-          ...this.#eventData.point,
-          isFavorite: !this.#eventData.point.isFavorite
-        };
-
-        this.#onPointChange?.(nextPoint);
+  #createEscKeyDownHandler() {
+    return (evt) => {
+      if (evt.key !== 'Escape') {
+        return;
       }
-    });
 
-    this.#eventFormComponent = this.#createEventForm();
+      evt.preventDefault();
+      this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
+    };
+  }
+
+  #replaceEvent(oldComponent, newComponent) {
+    replace(newComponent, oldComponent);
+
+    this.#isFormOpen = newComponent === this.#eventFormComponent;
 
     if (this.#isFormOpen) {
-      replace(this.#eventFormComponent, prevEventFormComponent);
+      document.addEventListener('keydown', this.#escKeyDownHandler);
     } else {
-      replace(this.#eventComponent, prevEventComponent);
+      document.removeEventListener('keydown', this.#escKeyDownHandler);
     }
   }
 
+  #createEventItem() {
+    return new EventItemView({
+      point: this.#eventData.point,
+      pointDestination: this.#eventData.pointDestination,
+      pointOffer: this.#eventData.pointOffer,
+      onEditClick: this.#handleEditClick,
+      onFavoriteClick: this.#handleFavoriteClick
+    });
+  }
+
+  #createEventForm() {
+    return new EventFormView({
+      point: this.#eventData.point,
+      pointDestination: this.#eventData.pointDestination,
+      pointOffer: this.#eventData.pointOffer,
+      onTypeChange: this.#handleTypeChange,
+      onSubmit: this.#handleFormSubmit,
+      onClose: this.#handleFormClose
+    });
+  }
+
+  #handleEditClick = () => {
+    if (this.#isEditBlocked?.()) {
+      return;
+    }
+
+    this.#onFormOpen?.();
+    this.#replaceEvent(this.#eventComponent, this.#eventFormComponent);
+  };
+
+  #handleFavoriteClick = () => {
+    const nextPoint = {
+      ...this.#eventData.point,
+      isFavorite: !this.#eventData.point.isFavorite
+    };
+
+    this.#onPointChange?.(nextPoint);
+  };
+
+  #handleTypeChange = (newType) => {
+    const nextPoint = {
+      ...this.#eventData.point,
+      type: newType,
+      offers: []
+    };
+
+    const nextEventData = this.#onTypeChange(nextPoint);
+
+    const prevForm = this.#eventFormComponent;
+
+    this.#eventData = nextEventData;
+    this.#eventFormComponent = this.#createEventForm();
+
+    replace(this.#eventFormComponent, prevForm);
+  };
+
+  #handleFormSubmit = (evt) => {
+    evt.preventDefault();
+    this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
+  };
+
+  #handleFormClose = () => {
+    this.#replaceEvent(this.#eventFormComponent, this.#eventComponent);
+  };
 }

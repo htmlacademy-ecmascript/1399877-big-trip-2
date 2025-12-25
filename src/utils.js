@@ -73,3 +73,12 @@ export const filter = {
   [FILTER_TYPES.PRESENT]: (points) => points.filter((p) => p.dateFrom && p.dateTo && isDatePresent(p.dateFrom, p.dateTo)),
   [FILTER_TYPES.PAST]: (points) => points.filter((p) => p.dateTo && isDatePast(p.dateTo)),
 };
+
+export function getFiltersAvailability(points) {
+  return {
+    [FILTER_TYPES.EVERYTHING]: true,
+    [FILTER_TYPES.FUTURE]: filter[FILTER_TYPES.FUTURE](points).length > 0,
+    [FILTER_TYPES.PRESENT]: filter[FILTER_TYPES.PRESENT](points).length > 0,
+    [FILTER_TYPES.PAST]: filter[FILTER_TYPES.PAST](points).length > 0,
+  };
+}
