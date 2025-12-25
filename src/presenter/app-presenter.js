@@ -1,27 +1,35 @@
-import { render, replace, RenderPosition } from '../framework/render';
-import FiltersView from '../view/filters-view';
+import { render, RenderPosition } from '../framework/render';
+import EventPresenter from './event-presenter';
+import FiltersPresenter from './filters-presenter';
 import SortListView from '../view/sort-list-view';
 import EventsListView from '../view/event/events-list-view';
-import EventItemView from '../view/event/event-item-view';
-import EventFormView from '../view/event/event-form-view';
-import { BLANK_POINT } from '../const';
+import { BLANK_POINT, FILTER_TYPES, SORT_TYPE } from '../const';
 import TripInfoView from '../view/header/trip-info-view';
+import NewEventPresenter from './new-event-presenter';
+import { filter } from '../utils';
 
 export default class AppPresenter {
-  #headerContainer;
+  #headerContainer = null;
+  #filtersContainer = null;
+  #mainContainer = null;
   #tripInfo = null;
-  #mainContainer;
-  #eventListContainer;
-  #pointModel;
-  #offerModel;
-  #destinationModel;
-  #points;
-  #addButton;
-  #newPointFormComponent = null;
-  #newPointEscHandler = null;
+  #eventListContainer = null;
 
-  constructor({ headerContainer, mainContainer, pointModel, destinationModel, offerModel }) {
+  #pointModel = [];
+  #offerModel = {};
+  #destinationModel = {};
+
+  #points = [];
+  #addButton = null;
+  #isCreatingPoint = false;
+  #newEventPresenter = null;
+  #currentSort = SORT_TYPE.DAY;
+  #eventPresenters = new Map();
+  #filtersPresenter = null;
+
+  constructor({ headerContainer,filtersContainer, mainContainer, pointModel, destinationModel, offerModel }) {
     this.#headerContainer = headerContainer;
+    this.#filtersContainer = filtersContainer;
     this.#mainContainer = mainContainer;
     this.#tripInfo = new TripInfoView();
     this.#eventListContainer = new EventsListView();
@@ -32,23 +40,50 @@ export default class AppPresenter {
     this.#points = this.#pointModel.get();
   }
 
-  #destroyNewPointForm() {
-    if (this.#newPointFormComponent === null) {
+  #handlePointChange = (updatedPoint) => {
+    this.#points = this.#points.map((p) =>
+      p.id === updatedPoint.id ? updatedPoint : p
+    );
+
+    const eventPresenter = this.#eventPresenters.get(updatedPoint.id);
+    if (!eventPresenter) {
       return;
     }
 
-    this.#newPointFormComponent.element.remove();
-    this.#newPointFormComponent = null;
+    const updatedEventData = this.#getFormData(updatedPoint);
 
-    if (this.#newPointEscHandler !== null) {
-      document.removeEventListener('keydown', this.#newPointEscHandler);
-      this.#newPointEscHandler = null;
-    }
+    eventPresenter.update(updatedEventData);
+  };
 
-    if (this.#addButton) {
-      this.#addButton.disabled = false;
-    }
+
+  #getEventsForRender() {
+    const currentFilter = this.#filtersPresenter.getCurrentFilter();
+    const filteredPoints = filter[currentFilter](this.#points);
+    return filteredPoints.map((p) => this.#getFormData(p));
   }
+
+  #clearEvents() {
+    this.#eventPresenters.forEach((presenter) => presenter.destroy?.());
+    this.#eventPresenters.clear();
+
+    this.#eventListContainer.element.innerHTML = '';
+  }
+
+  #renderEvents() {
+    this.#clearEvents();
+
+    const events = this.#getEventsForRender();
+    events.forEach((eventData) => this.#renderEvent(eventData));
+  }
+
+  #handleEventFormOpen = () => {
+    if (this.#isCreatingPoint) {
+      this.#newEventPresenter?.destroy();
+      this.#closeNewEvent();
+    }
+
+    this.#resetAllPointPresenters();
+  };
 
 
   #getFormData(point) {
@@ -57,98 +92,111 @@ export default class AppPresenter {
     return { point, pointDestination, pointOffer };
   }
 
-  #renderEvent (point) {
-    const formData = this.#getFormData(point);
-
-    const eventComponent = new EventItemView ({
-      point,
-      pointDestination: formData.pointDestination,
-      pointOffer: formData.pointOffer,
-      onEditClick: replaceEventToForm
+  #renderEvent(eventData) {
+    const eventPresenter = new EventPresenter({
+      eventListContainer: this.#eventListContainer.element,
+      onFormOpen: this.#handleEventFormOpen,
+      isEditBlocked: () => this.#isCreatingPoint,
+      onTypeChange: (point) => this.#getFormData(point),
+      onPointChange: this.#handlePointChange,
     });
 
-    const eventFormComponent = new EventFormView ({
-      point: formData.point,
-      pointDestination: formData.pointDestination,
-      pointOffer: formData.pointOffer,
-      onSubmit: (evt) => {
-        evt.preventDefault();
-        replaceFormToEvent();
-      },
-      onClose: () => replaceFormToEvent()
-    });
 
-    function replaceFormToEvent () {
-      replace(eventComponent, eventFormComponent);
-      document.removeEventListener('keydown', escKeyDownHandler);
+    eventPresenter.init(eventData);
+
+    if (eventData.point.id) {
+      this.#eventPresenters.set(eventData.point.id, eventPresenter);
     }
-
-    function escKeyDownHandler (evt) {
-      if (evt.key === 'Escape') {
-        replaceFormToEvent();
-      }
-    }
-
-    function replaceEventToForm () {
-      replace(eventFormComponent, eventComponent);
-      document.addEventListener('keydown', escKeyDownHandler);
-    }
-
-    render(eventComponent, this.#eventListContainer.element);
   }
 
-  #openNewPointForm () {
-    if (this.#newPointFormComponent !== null) {
-      this.#destroyNewPointForm();
-    }
-
-    const newPoint = {
-      ...BLANK_POINT,
-    };
-
-    const formData = this.#getFormData(newPoint);
-
-    this.#newPointFormComponent = new EventFormView({
-      point: formData.point,
-      pointDestination: formData.pointDestination,
-      pointOffer: formData.pointOffer,
-      onSubmit: (evt) => {
-        evt.preventDefault();
-        this.#destroyNewPointForm();
-      },
-      onClose: () => {
-        this.#destroyNewPointForm();
-      }
-    });
-
-    render(this.#newPointFormComponent, this.#eventListContainer.element,RenderPosition.AFTERBEGIN);
+  #openNewEvent() {
+    this.#isCreatingPoint = true;
     this.#addButton.disabled = true;
+  }
 
-    this.#newPointEscHandler = (evt) => {
-      if (evt.key === 'Escape') {
-        evt.preventDefault();
-        this.#destroyNewPointForm();
-      }
+  #closeNewEvent() {
+    this.#isCreatingPoint = false;
+    this.#addButton.disabled = false;
+  }
+
+  #handleNewEventDestroy = () => {
+    this.#closeNewEvent();
+    this.#newEventPresenter = null;
+  };
+
+  #makeEventDataByType = (prevEventData, nextType) => {
+    const nextPoint = {
+      ...prevEventData.point,
+      type: nextType,
+      offers: []
     };
 
-    document.addEventListener('keydown', this.#newPointEscHandler);
+    const nextPointOffer = this.#offerModel.getByType(nextType) ?? null;
+
+    return {
+      point: nextPoint,
+      pointOffer: nextPointOffer,
+      pointDestination: prevEventData.pointDestination
+    };
+  };
+
+  #createNewEvent () {
+    this.#filtersPresenter.setFilter(FILTER_TYPES.EVERYTHING);
+    this.#currentSort = SORT_TYPE.DAY;
+
+    this.#resetAllPointPresenters();
+    this.#newEventPresenter?.destroy();
+    this.#openNewEvent();
+
+    this.#newEventPresenter = new NewEventPresenter({
+      eventListContainer: this.#eventListContainer,
+      onDestroy: this.#handleNewEventDestroy,
+      onTypeChange: this.#makeEventDataByType
+    });
+
+    const newEvent = { ...BLANK_POINT };
+    const eventData = this.#getFormData(newEvent);
+
+    this.#newEventPresenter.init(eventData);
   }
+
+  #handleFilterChange = () => {
+    this.#currentSort = SORT_TYPE.DAY;
+    this.#renderEvents();
+  };
+
 
   #handleCreateButtonClick = (evt) => {
     evt.preventDefault();
-    this.#openNewPointForm();
+    this.#createNewEvent();
+  };
+
+  #resetAllPointPresenters = () => {
+    this.#eventPresenters.forEach((presenter) => presenter.resetForm());
   };
 
   init() {
     this.#addButton = document.querySelector('.trip-main__event-add-btn');
     this.#addButton.addEventListener('click', this.#handleCreateButtonClick);
-    render(this.#tripInfo, this.#headerContainer);
-    render(new FiltersView(), this.#headerContainer);
-    render(new SortListView(), this.#mainContainer);
+
+    render(this.#tripInfo, this.#headerContainer, RenderPosition.AFTERBEGIN);
+    this.#filtersPresenter = new FiltersPresenter({
+      filtersContainer: this.#filtersContainer,
+      currentFilter: FILTER_TYPES.EVERYTHING,
+      onFilterChange: this.#handleFilterChange
+    });
+
+    this.#filtersPresenter.init();
+
+    render(
+      new SortListView({
+        currentSort: this.#currentSort,
+        onSortChange: () => {}
+      }),
+      this.#mainContainer
+    );
     render(this.#eventListContainer, this.#mainContainer);
 
-    this.#points.forEach((point) => {
-      this.#renderEvent(point);
-    });
+    this.#renderEvents();
   }
 }

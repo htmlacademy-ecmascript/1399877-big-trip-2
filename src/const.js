@@ -19,10 +19,10 @@ export const FORMAT_DATE = {
 };
 
 export const BLANK_POINT = {
-  basePrice: null,
+  basePrice: 0,
   dateFrom: null,
   dateTo: null,
-  destination: null,
+  destination: [],
   isFavorite: false,
   offers: [],
   type: 'flight'
@@ -33,4 +33,12 @@ export const FILTER_TYPES = {
   PRESENT: 'present',
   PAST: 'past',
   EVERYTHING: 'everything'
+};
+
+export const SORT_TYPE = {
+  DAY: 'day',
+  EVENT: 'event',
+  TIME: 'time',
+  PRICE: 'price',
+  OFFERS: 'offers'
 };

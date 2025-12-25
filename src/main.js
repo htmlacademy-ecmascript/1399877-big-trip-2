@@ -4,8 +4,9 @@ import PointModel from './model/point-model';
 import OfferModel from './model/offer-model';
 import DestinationModel from './model/destination-model';
 
-const tripHeaderContainer = document.querySelector('.trip-main');
-const tripMainContainer = document.querySelector('.trip-events');
+const headerContainer = document.querySelector('.trip-main');
+const filtersContainer = document.querySelector('.trip-controls__filters');
+const mainContainer = document.querySelector('.trip-events');
 
 const service = new Service();
 const pointModel = new PointModel(service);
@@ -13,8 +14,9 @@ const offerModel = new OfferModel(service);
 const destinationModel = new DestinationModel(service);
 
 const appPresenter = new AppPresenter({
-  headerContainer: tripHeaderContainer,
-  mainContainer: tripMainContainer,
+  headerContainer: headerContainer,
+  filtersContainer: filtersContainer,
+  mainContainer: mainContainer,
   pointModel: pointModel,
   offerModel: offerModel,
   destinationModel: destinationModel
