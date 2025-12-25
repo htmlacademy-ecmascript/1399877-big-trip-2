@@ -1,4 +1,4 @@
-import { render, RenderPosition } from '../framework/render';
+import { render, replace, RenderPosition } from '../framework/render';
 import EventPresenter from './event-presenter';
 import FiltersPresenter from './filters-presenter';
 import SortListView from '../view/sort-list-view';
@@ -12,79 +12,196 @@ export default class AppPresenter {
   #headerContainer = null;
   #filtersContainer = null;
   #mainContainer = null;
+
   #tripInfo = null;
   #eventListContainer = null;
 
-  #pointModel = [];
-  #offerModel = {};
-  #destinationModel = {};
+  #pointModel = null;
+  #offerModel = null;
+  #destinationModel = null;
 
   #points = [];
+  #eventPresenters = new Map();
+
+  #filtersPresenter = null;
+  #sortComponent = null;
+
   #addButton = null;
   #isCreatingPoint = false;
   #newEventPresenter = null;
-  #currentSort = SORT_TYPE.DAY;
-  #eventPresenters = new Map();
-  #filtersPresenter = null;
 
-  constructor({ headerContainer,filtersContainer, mainContainer, pointModel, destinationModel, offerModel }) {
+  #currentSort = SORT_TYPE.DAY;
+
+  constructor({ headerContainer, filtersContainer, mainContainer, pointModel, destinationModel, offerModel }) {
     this.#headerContainer = headerContainer;
     this.#filtersContainer = filtersContainer;
     this.#mainContainer = mainContainer;
+
+    this.#pointModel = pointModel;
+    this.#destinationModel = destinationModel;
+    this.#offerModel = offerModel;
+
     this.#tripInfo = new TripInfoView();
     this.#eventListContainer = new EventsListView();
-    this.#pointModel = pointModel;
-    this.#offerModel = offerModel;
-    this.#destinationModel = destinationModel;
 
     this.#points = this.#pointModel.get();
   }
 
-  #handlePointChange = (updatedPoint) => {
-    this.#points = this.#points.map((p) =>
-      p.id === updatedPoint.id ? updatedPoint : p
-    );
+  init() {
+    this.#addButton = document.querySelector('.trip-main__event-add-btn');
+    this.#addButton.addEventListener('click', this.#handleCreateButtonClick);
 
-    const eventPresenter = this.#eventPresenters.get(updatedPoint.id);
-    if (!eventPresenter) {
+    render(this.#tripInfo, this.#headerContainer, RenderPosition.AFTERBEGIN);
+
+    this.#initFilters();
+    this.#renderSort();
+
+    render(this.#eventListContainer, this.#mainContainer);
+
+    this.#renderEvents();
+  }
+
+  #initFilters() {
+    this.#filtersPresenter = new FiltersPresenter({
+      filtersContainer: this.#filtersContainer,
+      currentFilter: FILTER_TYPES.EVERYTHING,
+      onFilterChange: this.#handleFilterChange,
+      getPoints: () => this.#points
+    });
+
+
+    this.#filtersPresenter.init();
+  }
+
+  #handleCreateButtonClick = (evt) => {
+    evt.preventDefault();
+    this.#createNewEvent();
+  };
+
+  #handleFilterChange = () => {
+    this.#setSort(SORT_TYPE.DAY);
+    this.#renderEvents();
+  };
+
+  #handleSortChange = (nextSort) => {
+    if (this.#currentSort === nextSort) {
       return;
     }
 
-    const updatedEventData = this.#getFormData(updatedPoint);
+    this.#setSort(nextSort);
+    this.#renderEvents();
+  };
 
-    eventPresenter.update(updatedEventData);
+  #handleEventFormOpen = () => {
+    if (this.#isCreatingPoint) {
+      this.#destroyNewEvent();
+    }
+
+    this.#resetAllPointPresenters();
+  };
+
+  #handleNewEventDestroy = () => {
+    this.#newEventPresenter = null;
+    this.#closeNewEvent();
+  };
+
+  #handlePointChange = (updatedPoint) => {
+    this.#updatePointInStore(updatedPoint);
+    this.#filtersPresenter.init();
+
+    const presenter = this.#eventPresenters.get(updatedPoint.id);
+    if (!presenter) {
+      return;
+    }
+
+    presenter.update(this.#getFormData(updatedPoint));
   };
 
 
-  #getEventsForRender() {
-    const currentFilter = this.#filtersPresenter.getCurrentFilter();
-    const filteredPoints = filter[currentFilter](this.#points);
-    return filteredPoints.map((p) => this.#getFormData(p));
+  #setSort(nextSort) {
+    this.#currentSort = nextSort;
+    this.#renderSort();
   }
 
-  #clearEvents() {
-    this.#eventPresenters.forEach((presenter) => presenter.destroy?.());
-    this.#eventPresenters.clear();
+  #renderSort() {
+    const prev = this.#sortComponent;
 
-    this.#eventListContainer.element.innerHTML = '';
+    this.#sortComponent = new SortListView({
+      currentSort: this.#currentSort,
+      onSortChange: this.#handleSortChange
+    });
+
+    if (!prev) {
+      render(this.#sortComponent, this.#mainContainer);
+      return;
+    }
+
+    replace(this.#sortComponent, prev);
   }
 
   #renderEvents() {
     this.#clearEvents();
 
     const events = this.#getEventsForRender();
-    events.forEach((eventData) => this.#renderEvent(eventData));
+    for (const eventData of events) {
+      this.#renderEvent(eventData);
+    }
   }
 
-  #handleEventFormOpen = () => {
-    if (this.#isCreatingPoint) {
-      this.#newEventPresenter?.destroy();
-      this.#closeNewEvent();
+  #renderEvent(eventData) {
+    const presenter = this.#createEventPresenter();
+    presenter.init(eventData);
+
+    const { id } = eventData.point;
+    if (id) {
+      this.#eventPresenters.set(id, presenter);
+    }
+  }
+
+  #createEventPresenter() {
+    return new EventPresenter({
+      eventListContainer: this.#eventListContainer.element,
+      onFormOpen: this.#handleEventFormOpen,
+      isEditBlocked: () => this.#isCreatingPoint,
+      onTypeChange: (point) => this.#getFormData(point),
+      onPointChange: this.#handlePointChange,
+    });
+  }
+
+  #clearEvents() {
+    this.#eventPresenters.forEach((presenter) => presenter.destroy?.());
+    this.#eventPresenters.clear();
+    this.#eventListContainer.element.innerHTML = '';
+  }
+
+  #getEventsForRender() {
+    const currentFilter = this.#filtersPresenter.getCurrentFilter();
+    const filtered = filter[currentFilter](this.#points);
+    const sorted = this.#sortPoints(filtered);
+    return sorted.map((p) => this.#getFormData(p));
+  }
+
+  #sortPoints(points) {
+    const sorted = [...points];
+
+    const time = (d) => (d ? new Date(d).getTime() : 0);
+    const duration = (p) => time(p.dateTo) - time(p.dateFrom);
+
+    switch (this.#currentSort) {
+      case SORT_TYPE.TIME:
+        sorted.sort((a, b) => duration(b) - duration(a));
+        break;
+      case SORT_TYPE.PRICE:
+        sorted.sort((a, b) => (b.basePrice ?? 0) - (a.basePrice ?? 0));
+        break;
+      case SORT_TYPE.DAY:
+      default:
+        sorted.sort((a, b) => time(a.dateFrom) - time(b.dateFrom));
+        break;
     }
 
-    this.#resetAllPointPresenters();
-  };
-
+    return sorted;
+  }
 
   #getFormData(point) {
     const pointDestination = point.destination ? this.#destinationModel.getById(point.destination) : null;
@@ -92,21 +209,27 @@ export default class AppPresenter {
     return { point, pointDestination, pointOffer };
   }
 
-  #renderEvent(eventData) {
-    const eventPresenter = new EventPresenter({
-      eventListContainer: this.#eventListContainer.element,
-      onFormOpen: this.#handleEventFormOpen,
-      isEditBlocked: () => this.#isCreatingPoint,
-      onTypeChange: (point) => this.#getFormData(point),
-      onPointChange: this.#handlePointChange,
+  #makeEventDataByType = (prevEventData, nextType) => {
+    const nextPoint = { ...prevEventData.point, type: nextType, offers: [] };
+    const nextPointOffer = this.#offerModel.getByType(nextType) ?? null;
+    return { point: nextPoint, pointOffer: nextPointOffer, pointDestination: prevEventData.pointDestination };
+  };
+
+  #createNewEvent() {
+    this.#filtersPresenter.setFilter(FILTER_TYPES.EVERYTHING);
+    this.#setSort(SORT_TYPE.DAY);
+
+    this.#resetAllPointPresenters();
+    this.#destroyNewEvent();
+    this.#openNewEvent();
+
+    this.#newEventPresenter = new NewEventPresenter({
+      eventListContainer: this.#eventListContainer,
+      onDestroy: this.#handleNewEventDestroy,
+      onTypeChange: this.#makeEventDataByType
     });
 
-
-    eventPresenter.init(eventData);
-
-    if (eventData.point.id) {
-      this.#eventPresenters.set(eventData.point.id, eventPresenter);
-    }
+    this.#newEventPresenter.init(this.#getFormData({ ...BLANK_POINT }));
   }
 
   #openNewEvent() {
@@ -119,84 +242,23 @@ export default class AppPresenter {
     this.#addButton.disabled = false;
   }
 
-  #handleNewEventDestroy = () => {
-    this.#closeNewEvent();
+  #destroyNewEvent() {
+    if (!this.#newEventPresenter) {
+      return;
+    }
+
+    const presenter = this.#newEventPresenter;
     this.#newEventPresenter = null;
-  };
 
-  #makeEventDataByType = (prevEventData, nextType) => {
-    const nextPoint = {
-      ...prevEventData.point,
-      type: nextType,
-      offers: []
-    };
-
-    const nextPointOffer = this.#offerModel.getByType(nextType) ?? null;
-
-    return {
-      point: nextPoint,
-      pointOffer: nextPointOffer,
-      pointDestination: prevEventData.pointDestination
-    };
-  };
-
-  #createNewEvent () {
-    this.#filtersPresenter.setFilter(FILTER_TYPES.EVERYTHING);
-    this.#currentSort = SORT_TYPE.DAY;
-
-    this.#resetAllPointPresenters();
-    this.#newEventPresenter?.destroy();
-    this.#openNewEvent();
-
-    this.#newEventPresenter = new NewEventPresenter({
-      eventListContainer: this.#eventListContainer,
-      onDestroy: this.#handleNewEventDestroy,
-      onTypeChange: this.#makeEventDataByType
-    });
-
-    const newEvent = { ...BLANK_POINT };
-    const eventData = this.#getFormData(newEvent);
-
-    this.#newEventPresenter.init(eventData);
+    presenter.destroy();
+    this.#closeNewEvent();
   }
-
-  #handleFilterChange = () => {
-    this.#currentSort = SORT_TYPE.DAY;
-    this.#renderEvents();
-  };
-
-
-  #handleCreateButtonClick = (evt) => {
-    evt.preventDefault();
-    this.#createNewEvent();
-  };
 
   #resetAllPointPresenters = () => {
     this.#eventPresenters.forEach((presenter) => presenter.resetForm());
   };
 
-  init() {
-    this.#addButton = document.querySelector('.trip-main__event-add-btn');
-    this.#addButton.addEventListener('click', this.#handleCreateButtonClick);
-
-    render(this.#tripInfo, this.#headerContainer, RenderPosition.AFTERBEGIN);
-    this.#filtersPresenter = new FiltersPresenter({
-      filtersContainer: this.#filtersContainer,
-      currentFilter: FILTER_TYPES.EVERYTHING,
-      onFilterChange: this.#handleFilterChange
-    });
-
-    this.#filtersPresenter.init();
-
-    render(
-      new SortListView({
-        currentSort: this.#currentSort,
-        onSortChange: () => {}
-      }),
-      this.#mainContainer
-    );
-    render(this.#eventListContainer, this.#mainContainer);
-
-    this.#renderEvents();
+  #updatePointInStore(updatedPoint) {
+    this.#points = this.#points.map((p) => (p.id === updatedPoint.id ? updatedPoint : p));
   }
 }

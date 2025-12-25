@@ -1,34 +1,38 @@
 import AbstractView from '../framework/view/abstract-view';
 import { FILTER_TYPES } from '../const';
 
-function createFiltersListTemplate(currentFilter) {
+function createFiltersListTemplate(currentFilter, filtersAvailability) {
   return (
     `<form class="trip-filters" action="#" method="get">
         <div class="trip-filters__filter">
-          <input id="filter-everything" class="trip-filters__filter-input  visually-hidden"
+          <input id="filter-everything" class="trip-filters__filter-input visually-hidden"
             type="radio" name="trip-filter" value="${FILTER_TYPES.EVERYTHING}"
-            ${currentFilter === FILTER_TYPES.EVERYTHING ? 'checked' : ''}>
+            ${currentFilter === FILTER_TYPES.EVERYTHING ? 'checked' : ''}
+            ${filtersAvailability[FILTER_TYPES.EVERYTHING] ? '' : 'disabled'}>
           <label class="trip-filters__filter-label" for="filter-everything">Everything</label>
         </div>
 
         <div class="trip-filters__filter">
-          <input id="filter-future" class="trip-filters__filter-input  visually-hidden"
+          <input id="filter-future" class="trip-filters__filter-input visually-hidden"
             type="radio" name="trip-filter" value="${FILTER_TYPES.FUTURE}"
-            ${currentFilter === FILTER_TYPES.FUTURE ? 'checked' : ''}>
+            ${currentFilter === FILTER_TYPES.FUTURE ? 'checked' : ''}
+            ${filtersAvailability[FILTER_TYPES.FUTURE] ? '' : 'disabled'}>
           <label class="trip-filters__filter-label" for="filter-future">Future</label>
         </div>
 
         <div class="trip-filters__filter">
-          <input id="filter-present" class="trip-filters__filter-input  visually-hidden"
+          <input id="filter-present" class="trip-filters__filter-input visually-hidden"
             type="radio" name="trip-filter" value="${FILTER_TYPES.PRESENT}"
-            ${currentFilter === FILTER_TYPES.PRESENT ? 'checked' : ''}>
+            ${currentFilter === FILTER_TYPES.PRESENT ? 'checked' : ''}
+            ${filtersAvailability[FILTER_TYPES.PRESENT] ? '' : 'disabled'}>
           <label class="trip-filters__filter-label" for="filter-present">Present</label>
         </div>
 
         <div class="trip-filters__filter">
-          <input id="filter-past" class="trip-filters__filter-input  visually-hidden"
+          <input id="filter-past" class="trip-filters__filter-input visually-hidden"
             type="radio" name="trip-filter" value="${FILTER_TYPES.PAST}"
-            ${currentFilter === FILTER_TYPES.PAST ? 'checked' : ''}>
+            ${currentFilter === FILTER_TYPES.PAST ? 'checked' : ''}
+            ${filtersAvailability[FILTER_TYPES.PAST] ? '' : 'disabled'}>
           <label class="trip-filters__filter-label" for="filter-past">Past</label>
         </div>
 
@@ -39,11 +43,13 @@ function createFiltersListTemplate(currentFilter) {
 
 export default class FiltersView extends AbstractView {
   #currentFilter = FILTER_TYPES.EVERYTHING;
+  #filtersAvailability = null;
   #onFilterChange = null;
 
-  constructor({ currentFilter, onFilterChange }) {
+  constructor({ currentFilter, filtersAvailability, onFilterChange }) {
     super();
     this.#currentFilter = currentFilter;
+    this.#filtersAvailability = filtersAvailability;
     this.#onFilterChange = onFilterChange;
 
     this.#setHandlers();
@@ -59,6 +65,6 @@ export default class FiltersView extends AbstractView {
   }
 
   get template() {
-    return createFiltersListTemplate(this.#currentFilter);
+    return createFiltersListTemplate(this.#currentFilter, this.#filtersAvailability);
   }
 }

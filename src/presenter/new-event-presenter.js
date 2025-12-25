@@ -1,52 +1,26 @@
 import EventFormView from '../view/event/event-form-view';
-import { render, RenderPosition } from '../framework/render';
+import { render, RenderPosition, replace } from '../framework/render';
 
 export default class NewEventPresenter {
   #eventListContainer = null;
-  #newEventFormComponent = null;
-  #onTypeChange = null;
+
   #onDestroy = null;
-  #escKeyDownHandler = null;
+  #onTypeChange = null;
 
   #eventData = null;
 
-  constructor ({eventListContainer, onDestroy, onTypeChange}) {
+  #newEventFormComponent = null;
+  #escKeyDownHandler = null;
+
+  constructor({ eventListContainer, onDestroy, onTypeChange }) {
     this.#eventListContainer = eventListContainer;
     this.#onDestroy = onDestroy;
     this.#onTypeChange = onTypeChange;
   }
 
-  #renderNewEventForm () {
-    this.#newEventFormComponent = new EventFormView({
-      ...this.#eventData,
-      onTypeChange: this.#handleTypeChange,
-      onSubmit: (evt) => {
-        evt.preventDefault();
-        this.destroy();
-      },
-      onClose: () => this.destroy()
-    });
-
-    render(this.#newEventFormComponent, this.#eventListContainer.element,RenderPosition.AFTERBEGIN);
-  }
-
-  #handleTypeChange = (type) => {
-    this.#eventData = this.#onTypeChange(this.#eventData, type);
-
-    this.#newEventFormComponent.element.remove();
-    this.#newEventFormComponent = null;
-    this.#renderNewEventForm();
-  };
-
   init(eventData) {
     this.#eventData = eventData;
-
-    this.#escKeyDownHandler = (evt) => {
-      if (evt.key === 'Escape') {
-        evt.preventDefault();
-        this.destroy();
-      }
-    };
+    this.#escKeyDownHandler = this.#createEscKeyDownHandler();
 
     document.addEventListener('keydown', this.#escKeyDownHandler);
 
@@ -54,16 +28,56 @@ export default class NewEventPresenter {
   }
 
   destroy() {
-    if (this.#newEventFormComponent) {
-      this.#newEventFormComponent.element.remove();
-      this.#newEventFormComponent = null;
-    }
+    document.removeEventListener('keydown', this.#escKeyDownHandler);
 
-    if (this.#escKeyDownHandler) {
-      document.removeEventListener('keydown', this.#escKeyDownHandler);
-      this.#escKeyDownHandler = null;
-    }
+    this.#newEventFormComponent?.element?.remove();
+    this.#newEventFormComponent = null;
+
+    this.#escKeyDownHandler = null;
 
     this.#onDestroy?.();
   }
+
+  #createEscKeyDownHandler() {
+    return (evt) => {
+      if (evt.key !== 'Escape') {
+        return;
+      }
+
+      evt.preventDefault();
+      this.destroy();
+    };
+  }
+
+  #renderNewEventForm() {
+    this.#newEventFormComponent = this.#createNewEventForm();
+    render(this.#newEventFormComponent, this.#eventListContainer.element, RenderPosition.AFTERBEGIN);
+  }
+
+  #createNewEventForm() {
+    return new EventFormView({
+      ...this.#eventData,
+      onTypeChange: this.#handleTypeChange,
+      onSubmit: this.#handleFormSubmit,
+      onClose: this.#handleFormClose
+    });
+  }
+
+  #handleTypeChange = (type) => {
+    const prevForm = this.#newEventFormComponent;
+
+    this.#eventData = this.#onTypeChange(this.#eventData, type);
+    this.#newEventFormComponent = this.#createNewEventForm();
+
+    replace(this.#newEventFormComponent, prevForm);
+  };
+
+  #handleFormSubmit = (evt) => {
+    evt.preventDefault();
+    this.destroy();
+  };
+
+  #handleFormClose = () => {
+    this.destroy();
+  };
 }
