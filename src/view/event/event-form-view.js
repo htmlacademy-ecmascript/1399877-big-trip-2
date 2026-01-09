@@ -2,6 +2,8 @@ import { formatStringToShortDate, createDataListCities, isSelectedOffers } from 
 import { FORMAT_DATE, TYPES } from '../../const';
 import AbstractView from '../../framework/view/abstract-view';
 
+const FORM_ID = '1';
+
 function createOffersListTemplate (offer, selectedOffers) {
   if (offer === null || offer === undefined) {
     return '';
@@ -76,14 +78,14 @@ function createEventTypeGroupTemplate(currentType) {
   return TYPES.map((type) => `
     <div class="event__type-item">
       <input
-        id="event-type-${type}-1"
+        id="event-type-${type}-${FORM_ID}"
         class="event__type-input visually-hidden"
         type="radio"
         name="event-type"
         value="${type}"
         ${type === currentType ? 'checked' : ''}
       >
-      <label class="event__type-label event__type-label--${type}" for="event-type-${type}-1">
+      <label class="event__type-label event__type-label--${type}" for="event-type-${type}-${FORM_ID}">
         ${type[0].toUpperCase() + type.slice(1)}
       </label>
     </div>
@@ -157,11 +159,14 @@ function createEditItemEventTemplate({ point, offer, destination }) {
     <form class="event event--edit" action="#" method="post">
       <header class="event__header">
         <div class="event__type-wrapper">
-          <label class="event__type  event__type-btn" for="event-type-toggle-1">
+          <label class="event__type  event__type-btn" for="event-type-toggle-${FORM_ID}">
             <span class="visually-hidden">Choose event type</span>
             <img class="event__type-icon" width="17" height="17" src="img/icons/${point.type}.png" alt="Event type icon">
           </label>
-          <input class="event__type-toggle  visually-hidden" id="event-type-toggle-1" type="checkbox">
+          <input class="event__type-toggle
+          visually-hidden"
+          id="event-type-toggle-${FORM_ID}"
+          type="checkbox">
 
           <!-- ВАЖНО: список типов должен быть внутри wrapper, чтобы CSS по :checked сработал -->
           <div class="event__type-list">
@@ -173,43 +178,44 @@ function createEditItemEventTemplate({ point, offer, destination }) {
         </div>
 
         <div class="event__field-group  event__field-group--destination">
-          <label class="event__label  event__type-output" for="event-destination-1">
+          <label class="event__label  event__type-output" for="event-destination-${FORM_ID}">
             ${point.type}
           </label>
           <input
             class="event__input  event__input--destination"
-            id="event-destination-1"
+            id="event-destination-${FORM_ID}"
+            list="destination-list-${FORM_ID}"
             type="text"
             name="event-destination"
             value="${destinationName}"
-            list="destination-list-1"
           >
-          <datalist id="destination-list-1">
+          <datalist id="destination-list-${FORM_ID}">
             ${createDataListCities()}
           </datalist>
         </div>
 
         <div class="event__field-group  event__field-group--time">
-          <label class="visually-hidden" for="event-start-time-1">From</label>
+          <label class="visually-hidden" for="event-start-time-${FORM_ID}">From</label>
           <input
             class="event__input
             event__input--time"
-            id="event-start-time-1"
+            id="event-start-time-${FORM_ID}"
             type="text"
             name="event-start-time"
             value="${dateFromValue}">
             &mdash;
-            <label class="visually-hidden" for="event-end-time-1">To</label>
+            <label class="visually-hidden" for="event-end-time-${FORM_ID}">To</label>
           <input
             class="event__input
             event__input--time"
-            id="event-end-time-1"
-            type="text" name="event-end-time"
+            id="event-end-time-${FORM_ID}"
+            type="text"
+            name="event-end-time"
             value="${dateToValue}">
         </div>
 
         <div class="event__field-group  event__field-group--price">
-          <label class="event__label" for="event-price-1">
+          <label class="event__label" for="event-price-${FORM_ID}">
             <span class="visually-hidden">Price</span>
             &euro;
           </label>
@@ -254,9 +260,9 @@ export default class EventFormView extends AbstractView {
   #getPointFromForm() {
     const form = this.element.querySelector('form');
 
-    const basePriceInput = form.querySelector('#event-price-1');
-    const dateFromInput = form.querySelector('#event-start-time-1');
-    const dateToInput = form.querySelector('#event-end-time-1');
+    const basePriceInput = form.elements['event-price'];
+    const dateFromInput = form.elements['event-start-time'];
+    const dateToInput = form.elements['event-end-time'];
 
     const basePrice = Number(basePriceInput?.value ?? 0);
 
