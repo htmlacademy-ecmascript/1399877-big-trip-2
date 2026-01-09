@@ -14,7 +14,7 @@ function createOffersListTemplate (offers) {
   )).join('');
 }
 
-function createEventItemTemplate ({point, pointDestination, pointOffer}) {
+function createEventItemTemplate ({point, destination, offer}) {
   const dateFrom = (formatDate) => formatStringToShortDate(point.dateFrom,formatDate);
   const dateTo = (formatDate) => formatStringToShortDate(point.dateTo, formatDate);
 
@@ -25,7 +25,7 @@ function createEventItemTemplate ({point, pointDestination, pointOffer}) {
         <div class="event__type">
           <img class="event__type-icon" width="42" height="42" src="img/icons/${point.type}.png" alt="Event type icon">
         </div>
-        <h3 class="event__title">${point.type} ${pointDestination?.name}</h3>
+        <h3 class="event__title">${point.type} ${destination.name}</h3>
         <div class="event__schedule">
           <p class="event__time">
             <time class="event__start-time" datetime="${dateFrom(FORMAT_DATE.FULL_DATE_TIME)}">${dateFrom(FORMAT_DATE.TIME)}</time>
@@ -39,7 +39,7 @@ function createEventItemTemplate ({point, pointDestination, pointOffer}) {
         </p>
         <h4 class="visually-hidden">Offers:</h4>
         <ul class="event__selected-offers">
-          ${createOffersListTemplate(pointOffer?.offers)}
+          ${createOffersListTemplate(offer.offers)}
         </ul>
         <button class="event__favorite-btn  ${isFavoriteClass(point.isFavorite)}" type="button">
           <span class="visually-hidden">Add to favorite</span>
@@ -57,39 +57,39 @@ function createEventItemTemplate ({point, pointDestination, pointOffer}) {
 
 export default class EventItemView extends AbstractView{
   #point = null;
-  #pointDestination = null;
-  #pointOffer = null;
+  #destination = null;
+  #offer = null;
 
+  #handleFavoriteClick = null;
   #handleEditClick = null;
-  #onFavoriteClick = null;
 
-  constructor (params) {
+  constructor ({point, destination, offer, handleFavoriteClick, handleEditClick}) {
     super();
-    this.#point = params.point;
-    this.#pointDestination = params.pointDestination;
-    this.#pointOffer = params.pointOffer;
+    this.#point = point;
+    this.#destination = destination;
+    this.#offer = offer;
 
-    this.#handleEditClick = params.onEditClick;
-    this.#onFavoriteClick = params.onFavoriteClick;
+    this.#handleEditClick = handleEditClick;
+    this.#handleFavoriteClick = handleFavoriteClick;
 
     this.#setInnerHandlers();
   }
 
   #setInnerHandlers() {
     this.element.querySelector('.event__rollup-btn').addEventListener('click', () => {
-      this.#handleEditClick?.();
+      this.#handleEditClick();
     });
 
     this.element.querySelector('.event__favorite-btn').addEventListener('click', () => {
-      this.#onFavoriteClick?.();
+      this.#handleFavoriteClick();
     });
   }
 
   get template () {
     return createEventItemTemplate({
       point: this.#point,
-      pointDestination: this.#pointDestination,
-      pointOffer: this.#pointOffer
+      destination: this.#destination,
+      offer: this.#offer
     });
   }
 }

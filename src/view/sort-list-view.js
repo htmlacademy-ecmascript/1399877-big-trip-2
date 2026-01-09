@@ -42,26 +42,33 @@ function createSortListTemplate(currentSort) {
 
 export default class SortListView extends AbstractView {
   #currentSort = SORT_TYPE.DAY;
-  #onSortChange = null;
+  #handleSortChange = null;
 
-  constructor({ currentSort, onSortChange }) {
+  constructor({ currentSort, handleSortChange }) {
     super();
     this.#currentSort = currentSort;
-    this.#onSortChange = onSortChange;
+    this.#handleSortChange = handleSortChange;
 
     this.#setHandlers();
   }
 
   #setHandlers() {
     this.element.addEventListener('click', (evt) => {
-      const sortType = evt.target?.dataset?.sortType;
+      const target = evt.target;
 
-      if (!sortType) {
+      if (!(target instanceof HTMLElement)) {
         return;
       }
 
-      this.#onSortChange?.(sortType);
+      const sortType = target.dataset.sortType;
+
+      if (sortType === undefined) {
+        return;
+      }
+
+      this.#handleSortChange(sortType);
     });
+
   }
 
   get template() {

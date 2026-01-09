@@ -44,13 +44,13 @@ function createFiltersListTemplate(currentFilter, filtersAvailability) {
 export default class FiltersView extends AbstractView {
   #currentFilter = FILTER_TYPES.EVERYTHING;
   #filtersAvailability = null;
-  #onFilterChange = null;
+  #handleFilterChange = null;
 
-  constructor({ currentFilter, filtersAvailability, onFilterChange }) {
+  constructor({ currentFilter, filtersAvailability, handleFilterChange }) {
     super();
     this.#currentFilter = currentFilter;
     this.#filtersAvailability = filtersAvailability;
-    this.#onFilterChange = onFilterChange;
+    this.#handleFilterChange = handleFilterChange;
 
     this.#setHandlers();
   }
@@ -60,7 +60,7 @@ export default class FiltersView extends AbstractView {
       if (evt.target.name !== 'trip-filter') {
         return;
       }
-      this.#onFilterChange?.(evt.target.value);
+      this.#handleFilterChange(evt.target.value);
     });
   }
 

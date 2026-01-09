@@ -47,7 +47,7 @@ export function callcDate(dateFrom,dateTo){
 
 }
 
-export function createDataListCitys () {
+export function createDataListCities () {
   return CITIES.map((city) => `<option value="${city}"></option>`).join('');
 }
 

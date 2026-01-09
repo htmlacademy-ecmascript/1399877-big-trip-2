@@ -8,14 +8,14 @@ export default class FiltersPresenter {
   #getPoints = null;
 
   #currentFilter = FILTER_TYPES.EVERYTHING;
-  #onFilterChange = null;
+  #handleFilterChange = null;
 
   #filtersComponent = null;
 
-  constructor({ filtersContainer, currentFilter, onFilterChange, getPoints }) {
+  constructor({ filtersContainer, currentFilter, handleFilterChange, getPoints }) {
     this.#filtersContainer = filtersContainer;
     this.#currentFilter = currentFilter;
-    this.#onFilterChange = onFilterChange;
+    this.#handleFilterChange = handleFilterChange;
     this.#getPoints = getPoints;
   }
 
@@ -32,6 +32,10 @@ export default class FiltersPresenter {
     replace(this.#filtersComponent, prev);
   }
 
+  update() {
+    this.init();
+  }
+
   getCurrentFilter() {
     return this.#currentFilter;
   }
@@ -42,22 +46,22 @@ export default class FiltersPresenter {
     }
 
     this.#currentFilter = nextFilter;
-    this.#onFilterChange?.(nextFilter);
+    this.#handleFilterChange(nextFilter);
     this.init();
   }
 
   #createFiltersView() {
-    const points = this.#getPoints?.() ?? [];
+    const points = this.#getPoints();
     const filtersAvailability = getFiltersAvailability(points);
 
     return new FiltersView({
       currentFilter: this.#currentFilter,
       filtersAvailability,
-      onFilterChange: this.#handleFilterChange
+      handleFilterChange: this.#handleViewFilterChange
     });
   }
 
-  #handleFilterChange = (nextFilter) => {
+  #handleViewFilterChange = (nextFilter) => {
     this.setFilter(nextFilter);
   };
 }
