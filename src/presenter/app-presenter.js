@@ -271,22 +271,35 @@ export default class AppPresenter {
     this.#renderEvents();
   };
 
-
-
   #makeViewData(data) {
-    const point = (data && typeof data === 'object' && 'point' in data) ? data.point : data;
+    let point = null;
 
-    const destination =
-      point?.destination != null
-        ? this.#destinationModel.getById(point.destination)
-        : null;
+    if (data !== null && data !== undefined && typeof data === 'object') {
+      if ('point' in data) {
+        point = data.point;
+      } else {
+        point = data;
+      }
+    } else {
+      point = data;
+    }
 
-    const offer =
-      this.#offerModel.getByType(point?.type) ?? null;
+    let destination = null;
+    if (point !== null && point !== undefined) {
+      if (point.destination !== null && point.destination !== undefined) {
+        destination = this.#destinationModel.getById(point.destination);
+      }
+    }
+
+    let offer = null;
+    if (point !== null && point !== undefined) {
+      if (typeof point.type === 'string') {
+        offer = this.#offerModel.getByType(point.type);
+      }
+    }
 
     return { point, destination, offer };
   }
-
 
   #setEscKeyDownHandler() {
     if (this.#escKeyDownHandler !== null) {

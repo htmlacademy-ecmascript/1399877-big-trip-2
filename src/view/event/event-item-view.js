@@ -2,7 +2,11 @@ import { FORMAT_DATE } from '../../const';
 import AbstractView from '../../framework/view/abstract-view';
 import { formatStringToShortDate, callcDate , isFavoriteClass} from '../../utils';
 
-function createOffersListTemplate (offers) {
+function createOffersListTemplate(offers) {
+  if (!Array.isArray(offers) || offers.length === 0) {
+    return '';
+  }
+
   return offers.map((item) => (
     `
     <li class="event__offer">
@@ -15,6 +19,20 @@ function createOffersListTemplate (offers) {
 }
 
 function createEventItemTemplate ({point, destination, offer}) {
+  let destinationName = '';
+  if (destination !== null && destination !== undefined) {
+    if (typeof destination.name === 'string') {
+      destinationName = destination.name;
+    }
+  }
+
+  let offers = [];
+  if (offer !== null && offer !== undefined) {
+    if (Array.isArray(offer.offers)) {
+      offers = offer.offers;
+    }
+  }
+
   const dateFrom = (formatDate) => formatStringToShortDate(point.dateFrom,formatDate);
   const dateTo = (formatDate) => formatStringToShortDate(point.dateTo, formatDate);
 
@@ -25,7 +43,7 @@ function createEventItemTemplate ({point, destination, offer}) {
         <div class="event__type">
           <img class="event__type-icon" width="42" height="42" src="img/icons/${point.type}.png" alt="Event type icon">
         </div>
-        <h3 class="event__title">${point.type} ${destination.name}</h3>
+        <h3 class="event__title">${point.type} ${destinationName}</h3>
         <div class="event__schedule">
           <p class="event__time">
             <time class="event__start-time" datetime="${dateFrom(FORMAT_DATE.FULL_DATE_TIME)}">${dateFrom(FORMAT_DATE.TIME)}</time>
@@ -39,7 +57,7 @@ function createEventItemTemplate ({point, destination, offer}) {
         </p>
         <h4 class="visually-hidden">Offers:</h4>
         <ul class="event__selected-offers">
-          ${createOffersListTemplate(offer.offers)}
+          ${createOffersListTemplate(offers)}
         </ul>
         <button class="event__favorite-btn  ${isFavoriteClass(point.isFavorite)}" type="button">
           <span class="visually-hidden">Add to favorite</span>
@@ -77,11 +95,15 @@ export default class EventItemView extends AbstractView{
 
   #setInnerHandlers() {
     this.element.querySelector('.event__rollup-btn').addEventListener('click', () => {
-      this.#handleEditClick();
+      if (typeof this.#handleEditClick === 'function') {
+        this.#handleEditClick();
+      }
     });
 
     this.element.querySelector('.event__favorite-btn').addEventListener('click', () => {
-      this.#handleFavoriteClick();
+      if (typeof this.#handleFavoriteClick === 'function') {
+        this.#handleFavoriteClick();
+      }
     });
   }
 
