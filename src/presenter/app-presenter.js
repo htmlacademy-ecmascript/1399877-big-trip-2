@@ -1,202 +1,339 @@
-import { render, RenderPosition } from '../framework/render';
+import { render, replace, RenderPosition } from '../framework/render';
 import EventPresenter from './event-presenter';
 import FiltersPresenter from './filters-presenter';
 import SortListView from '../view/sort-list-view';
 import EventsListView from '../view/event/events-list-view';
 import { BLANK_POINT, FILTER_TYPES, SORT_TYPE } from '../const';
 import TripInfoView from '../view/header/trip-info-view';
-import NewEventPresenter from './new-event-presenter';
+import EventFormPresenter from './event-form-presenter';
 import { filter } from '../utils';
 
 export default class AppPresenter {
   #headerContainer = null;
   #filtersContainer = null;
   #mainContainer = null;
-  #tripInfo = null;
-  #eventListContainer = null;
 
-  #pointModel = [];
-  #offerModel = {};
-  #destinationModel = {};
+  #tripInfoView = null;
+  #eventsListView = null;
 
-  #points = [];
-  #addButton = null;
-  #isCreatingPoint = false;
-  #newEventPresenter = null;
-  #currentSort = SORT_TYPE.DAY;
+  #pointModel = null;
+  #offerModel = null;
+  #destinationModel = null;
+
   #eventPresenters = new Map();
-  #filtersPresenter = null;
 
-  constructor({ headerContainer,filtersContainer, mainContainer, pointModel, destinationModel, offerModel }) {
+  #filtersPresenter = null;
+  #sortView = null;
+  #eventFormPresenter = null;
+
+  #currentSort = SORT_TYPE.DAY;
+
+  #addButton = null;
+
+  #escKeyDownHandler = null;
+
+  constructor({
+    headerContainer,
+    filtersContainer,
+    mainContainer,
+    pointModel,
+    destinationModel,
+    offerModel
+  }) {
     this.#headerContainer = headerContainer;
     this.#filtersContainer = filtersContainer;
     this.#mainContainer = mainContainer;
-    this.#tripInfo = new TripInfoView();
-    this.#eventListContainer = new EventsListView();
-    this.#pointModel = pointModel;
-    this.#offerModel = offerModel;
-    this.#destinationModel = destinationModel;
 
-    this.#points = this.#pointModel.get();
+    this.#pointModel = pointModel;
+    this.#destinationModel = destinationModel;
+    this.#offerModel = offerModel;
+
+    this.#tripInfoView = new TripInfoView();
+    this.#eventsListView = new EventsListView();
   }
 
-  #handlePointChange = (updatedPoint) => {
-    this.#points = this.#points.map((p) =>
-      p.id === updatedPoint.id ? updatedPoint : p
-    );
+  init() {
+    this.#addButton = document.querySelector('.trip-main__event-add-btn');
+    this.#addButton.addEventListener('click', this.#handleCreateClick);
 
-    const eventPresenter = this.#eventPresenters.get(updatedPoint.id);
-    if (!eventPresenter) {
+    render(this.#tripInfoView, this.#headerContainer, RenderPosition.AFTERBEGIN);
+    render(this.#eventsListView, this.#mainContainer);
+
+    this.#initFilters();
+    this.#renderSort();
+    this.#renderEvents();
+  }
+
+  #initFilters() {
+    this.#filtersPresenter = new FiltersPresenter({
+      filtersContainer: this.#filtersContainer,
+      currentFilter: FILTER_TYPES.EVERYTHING,
+      handleFilterChange: this.#handleFilterChange,
+      getPoints: () => this.#pointModel.get()
+    });
+
+    this.#filtersPresenter.init();
+  }
+
+  #handleFilterChange = () => {
+    this.#currentSort = SORT_TYPE.DAY;
+    this.#renderSort();
+    this.#renderEvents();
+  };
+
+  #renderSort() {
+    const prev = this.#sortView;
+
+    this.#sortView = new SortListView({
+      currentSort: this.#currentSort,
+      handleSortChange: this.#handleSortChange
+    });
+
+    if (prev === null) {
+      render(this.#sortView, this.#mainContainer, RenderPosition.AFTERBEGIN);
       return;
     }
 
-    const updatedEventData = this.#getFormData(updatedPoint);
+    replace(this.#sortView, prev);
+  }
 
-    eventPresenter.update(updatedEventData);
+  #handleSortChange = (nextSort) => {
+    if (this.#currentSort === nextSort) {
+      return;
+    }
+
+    this.#currentSort = nextSort;
+    this.#renderEvents();
   };
-
-
-  #getEventsForRender() {
-    const currentFilter = this.#filtersPresenter.getCurrentFilter();
-    const filteredPoints = filter[currentFilter](this.#points);
-    return filteredPoints.map((p) => this.#getFormData(p));
-  }
-
-  #clearEvents() {
-    this.#eventPresenters.forEach((presenter) => presenter.destroy?.());
-    this.#eventPresenters.clear();
-
-    this.#eventListContainer.element.innerHTML = '';
-  }
 
   #renderEvents() {
     this.#clearEvents();
 
-    const events = this.#getEventsForRender();
-    events.forEach((eventData) => this.#renderEvent(eventData));
-  }
-
-  #handleEventFormOpen = () => {
-    if (this.#isCreatingPoint) {
-      this.#newEventPresenter?.destroy();
-      this.#closeNewEvent();
+    const eventsForRender = this.#getEventsForRender();
+    for (const eventData of eventsForRender) {
+      this.#renderEvent(eventData);
     }
-
-    this.#resetAllPointPresenters();
-  };
-
-
-  #getFormData(point) {
-    const pointDestination = point.destination ? this.#destinationModel.getById(point.destination) : null;
-    const pointOffer = this.#offerModel.getByType(point.type) ?? null;
-    return { point, pointDestination, pointOffer };
   }
 
   #renderEvent(eventData) {
-    const eventPresenter = new EventPresenter({
-      eventListContainer: this.#eventListContainer.element,
-      onFormOpen: this.#handleEventFormOpen,
-      isEditBlocked: () => this.#isCreatingPoint,
-      onTypeChange: (point) => this.#getFormData(point),
-      onPointChange: this.#handlePointChange,
+    const presenter = new EventPresenter({
+      eventListContainer: this.#eventsListView.element,
+      handleEventChange: this.#handlePointChange,
+      handleOpenEditForm: this.#handleOpenEditForm
     });
 
+    presenter.init(eventData);
 
-    eventPresenter.init(eventData);
 
-    if (eventData.point.id) {
-      this.#eventPresenters.set(eventData.point.id, eventPresenter);
+    const id = eventData.point.id;
+    if (this.#hasValue(id)) {
+      this.#eventPresenters.set(id, presenter);
     }
   }
 
-  #openNewEvent() {
-    this.#isCreatingPoint = true;
-    this.#addButton.disabled = true;
+  #clearEvents() {
+    this.#eventPresenters.forEach((presenter) => presenter.destroy());
+    this.#eventPresenters.clear();
+
+    const container = this.#eventsListView?.element;
+    if (!container) {
+      return;
+    }
+
+    container.replaceChildren();
   }
 
-  #closeNewEvent() {
-    this.#isCreatingPoint = false;
-    this.#addButton.disabled = false;
+  #getEventsForRender() {
+    const currentFilter = this.#filtersPresenter.getCurrentFilter();
+    const filterFn = filter[currentFilter];
+
+    const filteredPoints = typeof filterFn === 'function'
+      ? filterFn(this.#pointModel.get())
+      : [...this.#pointModel.get()];
+
+    const sortedPoints = this.#sortPoints(filteredPoints);
+    return sortedPoints.map((point) => this.#makeViewData(point));
   }
 
-  #handleNewEventDestroy = () => {
-    this.#closeNewEvent();
-    this.#newEventPresenter = null;
+  #toTime(date) {
+    return date ? new Date(date).getTime() : 0;
+  }
+
+  #getDuration(point) {
+    return this.#toTime(point.dateTo) - this.#toTime(point.dateFrom);
+  }
+
+  #hasValue(value) {
+    return value !== null && value !== undefined;
+  }
+
+  #isReplaceTargetValid(target) {
+    return target !== null && target !== undefined && typeof target === 'object' && 'element' in target;
+  }
+
+  #sortPoints(points) {
+    const sorted = [...points];
+
+    switch (this.#currentSort) {
+      case SORT_TYPE.TIME:
+        sorted.sort((a, b) => this.#getDuration(b) - this.#getDuration(a));
+        break;
+
+      case SORT_TYPE.PRICE:
+        sorted.sort((a, b) => (b.basePrice ?? 0) - (a.basePrice ?? 0));
+        break;
+
+      case SORT_TYPE.DAY:
+      default:
+        sorted.sort((a, b) => this.#toTime(a.dateFrom) - this.#toTime(b.dateFrom));
+        break;
+    }
+
+    return sorted;
+  }
+
+  #handleCreateClick = (evt) => {
+    evt.preventDefault();
+
+    this.#filtersPresenter.setFilter(FILTER_TYPES.EVERYTHING);
+    this.#currentSort = SORT_TYPE.DAY;
+
+    this.#openForm(this.#makeViewData({ ...BLANK_POINT }));
   };
 
-  #makeEventDataByType = (prevEventData, nextType) => {
+  #handleOpenEditForm = (pointId, eventView) => {
+    const point = this.#pointModel.get().find((p) => p.id === pointId);
+    if (point === undefined) {
+      return;
+    }
+
+    if (!this.#isReplaceTargetValid(eventView)) {
+      return;
+    }
+
+    this.#openForm(this.#makeViewData(point), eventView);
+  };
+
+
+  #openForm(eventData, replaceTarget) {
+    this.#closeAllForms();
+    this.#addButton.disabled = true;
+
+    this.#eventFormPresenter = new EventFormPresenter({
+      eventListContainer: this.#eventsListView,
+      handleDestroy: this.#handleFormDestroy,
+      handleTypeChange: this.#handleFormTypeChange,
+      handleSubmit: this.#handlePointChange
+    });
+
+    this.#eventFormPresenter.open(eventData, replaceTarget);
+
+    this.#setEscKeyDownHandler();
+  }
+
+  #destroyForm() {
+    if (this.#eventFormPresenter === null) {
+      return;
+    }
+
+    const presenter = this.#eventFormPresenter;
+    this.#eventFormPresenter = null;
+
+    this.#removeEscKeyDownHandler();
+
+    if (this.#addButton !== null) {
+      this.#addButton.disabled = false;
+    }
+
+    presenter.destroy();
+  }
+
+
+  #handleFormDestroy = () => {
+    this.#destroyForm();
+  };
+
+  #handleFormTypeChange = (prevEventData, nextType) => {
     const nextPoint = {
       ...prevEventData.point,
       type: nextType,
       offers: []
     };
 
-    const nextPointOffer = this.#offerModel.getByType(nextType) ?? null;
-
-    return {
-      point: nextPoint,
-      pointOffer: nextPointOffer,
-      pointDestination: prevEventData.pointDestination
-    };
+    return this.#makeViewData(nextPoint);
   };
 
-  #createNewEvent () {
-    this.#filtersPresenter.setFilter(FILTER_TYPES.EVERYTHING);
-    this.#currentSort = SORT_TYPE.DAY;
+  #handlePointChange = (updatedPoint) => {
+    this.#pointModel.update(updatedPoint);
 
-    this.#resetAllPointPresenters();
-    this.#newEventPresenter?.destroy();
-    this.#openNewEvent();
+    this.#filtersPresenter.update();
 
-    this.#newEventPresenter = new NewEventPresenter({
-      eventListContainer: this.#eventListContainer,
-      onDestroy: this.#handleNewEventDestroy,
-      onTypeChange: this.#makeEventDataByType
-    });
+    this.#renderEvents();
+  };
 
-    const newEvent = { ...BLANK_POINT };
-    const eventData = this.#getFormData(newEvent);
+  #makeViewData(data) {
+    let point = null;
 
-    this.#newEventPresenter.init(eventData);
+    if (data !== null && data !== undefined && typeof data === 'object') {
+      if ('point' in data) {
+        point = data.point;
+      } else {
+        point = data;
+      }
+    } else {
+      point = data;
+    }
+
+    let destination = null;
+    if (point !== null && point !== undefined) {
+      if (point.destination !== null && point.destination !== undefined) {
+        destination = this.#destinationModel.getById(point.destination);
+      }
+    }
+
+    let offer = null;
+    if (point !== null && point !== undefined) {
+      if (typeof point.type === 'string') {
+        offer = this.#offerModel.getByType(point.type);
+      }
+    }
+
+    return { point, destination, offer };
   }
 
-  #handleFilterChange = () => {
-    this.#currentSort = SORT_TYPE.DAY;
-    this.#renderEvents();
-  };
+  #setEscKeyDownHandler() {
+    if (this.#escKeyDownHandler !== null) {
+      return;
+    }
 
+    this.#escKeyDownHandler = (evt) => {
+      if (evt.key !== 'Escape') {
+        return;
+      }
 
-  #handleCreateButtonClick = (evt) => {
-    evt.preventDefault();
-    this.#createNewEvent();
-  };
+      evt.preventDefault();
+      this.#destroyForm();
+    };
 
-  #resetAllPointPresenters = () => {
-    this.#eventPresenters.forEach((presenter) => presenter.resetForm());
-  };
+    document.addEventListener('keydown', this.#escKeyDownHandler);
+  }
 
-  init() {
-    this.#addButton = document.querySelector('.trip-main__event-add-btn');
-    this.#addButton.addEventListener('click', this.#handleCreateButtonClick);
+  #removeEscKeyDownHandler() {
+    if (this.#escKeyDownHandler === null) {
+      return;
+    }
 
-    render(this.#tripInfo, this.#headerContainer, RenderPosition.AFTERBEGIN);
-    this.#filtersPresenter = new FiltersPresenter({
-      filtersContainer: this.#filtersContainer,
-      currentFilter: FILTER_TYPES.EVERYTHING,
-      onFilterChange: this.#handleFilterChange
+    document.removeEventListener('keydown', this.#escKeyDownHandler);
+    this.#escKeyDownHandler = null;
+  }
+
+  #closeAllForms() {
+    this.#destroyForm();
+
+    this.#eventPresenters.forEach((presenter) => {
+      if (presenter !== null && presenter !== undefined && typeof presenter.resetForm === 'function') {
+        presenter.resetForm();
+      }
     });
-
-    this.#filtersPresenter.init();
-
-    render(
-      new SortListView({
-        currentSort: this.#currentSort,
-        onSortChange: () => {}
-      }),
-      this.#mainContainer
-    );
-    render(this.#eventListContainer, this.#mainContainer);
-
-    this.#renderEvents();
   }
 }
