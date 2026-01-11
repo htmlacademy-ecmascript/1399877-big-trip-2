@@ -1,8 +1,19 @@
-import { formatStringToShortDate, createDataListCities, isSelectedOffers } from '../../utils';
+import { formatStringToShortDate, isSelectedOffers } from '../../utils';
 import { FORMAT_DATE, TYPES } from '../../const';
-import AbstractView from '../../framework/view/abstract-view';
+import AbstractStatefulView from '../../framework/view/abstract-stateful-view';
 
 const FORM_ID = '1';
+
+function createDestinationListTemplate(destinations) {
+  if (!Array.isArray(destinations)) {
+    return '';
+  }
+
+  return destinations
+    .filter((d) => d !== null && d !== undefined && typeof d.name === 'string')
+    .map((d) => `<option value="${d.name}"></option>`)
+    .join('');
+}
 
 function createOffersListTemplate (offer, selectedOffers) {
   if (offer === null || offer === undefined) {
@@ -92,14 +103,7 @@ function createEventTypeGroupTemplate(currentType) {
   `).join('');
 }
 
-function createEditItemEventTemplate({ point, offer, destination }) {
-  let isEdit = false;
-  if (point !== null && point !== undefined) {
-    if (point.id !== null && point.id !== undefined) {
-      isEdit = true;
-    }
-  }
-
+function createEditItemEventTemplate({ point, offer, destination, destinations }) {
 
   let selectedOffers = [];
   if (point !== null && point !== undefined && Array.isArray(point.offers)) {
@@ -127,22 +131,18 @@ function createEditItemEventTemplate({ point, offer, destination }) {
 
   let destinationName = '';
 
-  if (isEdit === true) {
-    if (destination !== null && destination !== undefined) {
-      if (typeof destination.name === 'string') {
-        destinationName = destination.name;
-      }
+  if (destination !== null && destination !== undefined) {
+    if (typeof destination.name === 'string') {
+      destinationName = destination.name;
     }
   }
 
   let dateFromValue = '';
   let dateToValue = '';
 
-  if (isEdit === true) {
-    if (point !== null && point !== undefined) {
-      dateFromValue = formatStringToShortDate(point.dateFrom, FORMAT_DATE.DATE_TIME);
-      dateToValue = formatStringToShortDate(point.dateTo, FORMAT_DATE.DATE_TIME);
-    }
+  if (point !== null && point !== undefined && point.id !== null && point.id !== undefined) {
+    dateFromValue = formatStringToShortDate(point.dateFrom, FORMAT_DATE.DATE_TIME);
+    dateToValue = formatStringToShortDate(point.dateTo, FORMAT_DATE.DATE_TIME);
   }
 
   let resetButtonText = 'Cancel';
@@ -190,7 +190,7 @@ function createEditItemEventTemplate({ point, offer, destination }) {
             value="${destinationName}"
           >
           <datalist id="destination-list-${FORM_ID}">
-            ${createDataListCities()}
+            ${createDestinationListTemplate(destinations)}
           </datalist>
         </div>
 
@@ -241,27 +241,26 @@ function createEditItemEventTemplate({ point, offer, destination }) {
   </li>`;
 }
 
-export default class EventFormView extends AbstractView {
-  #point = {};
-  #destination = {};
-  #offer = {};
+export default class EventFormView extends AbstractStatefulView {
 
   #handleFormSubmit = null;
   #handleFormClose = null;
-  #handleTypeChange = null;
 
   constructor (eventData) {
     super();
-    this.#point = eventData.point;
-    this.#destination = eventData.destination;
-    this.#offer = eventData.offer;
 
     this.#handleFormSubmit = eventData.handleSubmit;
     this.#handleFormClose = eventData.handleClose;
-    this.#handleTypeChange = eventData.handleTypeChange;
+
+    this._state = {
+      point: eventData.point,
+      destination: eventData.destination,
+      offer: eventData.offer,
+    };
 
     this.#setInnerHandlers();
   }
+
 
   #getPointFromForm() {
     const form = this.element.querySelector('form');
@@ -272,16 +271,25 @@ export default class EventFormView extends AbstractView {
 
     const basePrice = Number(basePriceInput?.value ?? 0);
 
+    const currentPoint = this._state.point;
+
     return {
-      ...this.#point,
+      ...currentPoint,
       basePrice: Number.isFinite(basePrice) ? basePrice : 0,
-      dateFrom: dateFromInput?.value ?? this.#point.dateFrom,
-      dateTo: dateToInput?.value ?? this.#point.dateTo,
+      dateFrom: dateFromInput?.value ?? currentPoint.dateFrom,
+      dateTo: dateToInput?.value ?? currentPoint.dateTo,
     };
   }
 
   #setInnerHandlers() {
     const form = this.element.querySelector('form');
+
+    const destinationInput = form.elements['event-destination'];
+    if (destinationInput !== null && destinationInput !== undefined) {
+      destinationInput.addEventListener('focus', () => {
+        destinationInput.select();
+      });
+    }
 
     form.addEventListener('submit', (evt) => {
       evt.preventDefault();
@@ -291,7 +299,51 @@ export default class EventFormView extends AbstractView {
 
     form.addEventListener('change', (evt) => {
       if (evt.target.name === 'event-type') {
-        this.#handleTypeChange(evt.target.value);
+        const nextType = evt.target.value;
+
+        const nextPoint = {
+          ...this._state.point,
+          type: nextType,
+          offers: [],
+        };
+
+        const typeToggle = this.element.querySelector(`#event-type-toggle-${FORM_ID}`);
+        if (typeToggle !== null) {
+          typeToggle.checked = false;
+        }
+
+        this.updateElement({ point: nextPoint });
+      }
+
+      if (evt.target.name === 'event-destination') {
+        const nextName = evt.target.value;
+
+        const destinationSource = this._state.destination;
+
+        if (!Array.isArray(destinationSource)) {
+          return;
+        }
+
+        const nextDestination = destinationSource.find((item) => {
+          if (item === null || item === undefined) {
+            return false;
+          }
+          return item.name === nextName;
+        });
+
+        if (nextDestination === undefined) {
+          return;
+        }
+
+        const nextPoint = {
+          ...this._state.point,
+          destination: nextDestination.id,
+        };
+
+        this.updateElement({
+          point: nextPoint,
+          destination: destinationSource,
+        });
       }
     });
 
@@ -311,12 +363,54 @@ export default class EventFormView extends AbstractView {
     }
   }
 
-
   get template() {
+    const point = this._state.point;
+    const offerSource = this._state.offer;
+    const destinationSource = this._state.destination;
+
+    let destinationForPoint = null;
+
+    if (Array.isArray(destinationSource)) {
+      destinationForPoint = destinationSource.find((item) => {
+        if (item === null || item === undefined) {
+          return false;
+        }
+        return item.id === point.destination;
+      });
+
+      if (destinationForPoint === undefined) {
+        destinationForPoint = null;
+      }
+    } else {
+      destinationForPoint = destinationSource;
+    }
+
+    let offerForCurrentType = null;
+    if (Array.isArray(offerSource)) {
+      offerForCurrentType = offerSource.find((item) => {
+        if (item === null || item === undefined) {
+          return false;
+        }
+        return item.type === point.type;
+      });
+
+      if (offerForCurrentType === undefined) {
+        offerForCurrentType = null;
+      }
+    } else {
+      offerForCurrentType = offerSource;
+    }
+
     return createEditItemEventTemplate({
-      point: this.#point,
-      destination: this.#destination,
-      offer: this.#offer
+      point,
+      destination: destinationForPoint,
+      destinations: destinationSource,
+      offer: offerForCurrentType
     });
+
+  }
+
+  _restoreHandlers() {
+    this.#setInnerHandlers();
   }
 }

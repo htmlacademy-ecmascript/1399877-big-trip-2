@@ -18,7 +18,29 @@ export default class EventPresenter {
   }
 
   #handleEditClick = () => {
-    this.#handleOpenEditForm(this.#eventData.point.id, this.#eventComponent);
+    if (typeof this.#handleOpenEditForm !== 'function') {
+      return;
+    }
+
+    if (this.#eventData === null || this.#eventData === undefined) {
+      return;
+    }
+
+    const point = this.#eventData.point;
+    if (point === null || point === undefined) {
+      return;
+    }
+
+    const id = point.id;
+    if (id === null || id === undefined) {
+      return;
+    }
+
+    if (this.#eventComponent === null) {
+      return;
+    }
+
+    this.#handleOpenEditForm(id, this.#eventComponent);
   };
 
   init(eventData) {
@@ -39,8 +61,11 @@ export default class EventPresenter {
     replace(this.#eventComponent, prevEventComponent);
   }
 
-
   destroy() {
+    if (this.#eventComponent === null) {
+      return;
+    }
+
     this.#eventComponent.element.remove();
     this.#eventComponent = null;
   }
@@ -61,6 +86,8 @@ export default class EventPresenter {
       isFavorite: !this.#eventData.point.isFavorite
     };
 
-    this.#handleEventChange(nextPoint);
+    if (typeof this.#handleEventChange === 'function') {
+      this.#handleEventChange(nextPoint);
+    }
   };
 }
