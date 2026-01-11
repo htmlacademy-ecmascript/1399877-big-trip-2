@@ -19,17 +19,51 @@ function createOffersListTemplate(offers) {
 }
 
 function createEventItemTemplate ({point, destination, offer}) {
+  let currentDestination = null;
+
+  if (Array.isArray(destination)) {
+    currentDestination = destination.find((d) => {
+      if (d === null || d === undefined) {
+        return false;
+      }
+      return d.id === point.destination;
+    });
+
+    if (currentDestination === undefined) {
+      currentDestination = null;
+    }
+  } else {
+    currentDestination = destination;
+  }
+
   let destinationName = '';
-  if (destination !== null && destination !== undefined) {
-    if (typeof destination.name === 'string') {
-      destinationName = destination.name;
+  if (currentDestination !== null && currentDestination !== undefined) {
+    if (typeof currentDestination.name === 'string') {
+      destinationName = currentDestination.name;
     }
   }
 
+  let currentOffer = null;
+
+  if (Array.isArray(offer)) {
+    currentOffer = offer.find((o) => {
+      if (o === null || o === undefined) {
+        return false;
+      }
+      return o.type === point.type;
+    });
+
+    if (currentOffer === undefined) {
+      currentOffer = null;
+    }
+  } else {
+    currentOffer = offer;
+  }
+
   let offers = [];
-  if (offer !== null && offer !== undefined) {
-    if (Array.isArray(offer.offers)) {
-      offers = offer.offers;
+  if (currentOffer !== null && currentOffer !== undefined) {
+    if (Array.isArray(currentOffer.offers)) {
+      offers = currentOffer.offers;
     }
   }
 

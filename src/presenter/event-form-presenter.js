@@ -9,13 +9,11 @@ export default class EventFormPresenter {
   #formComponent = null;
 
   #handleDestroy = null;
-  #handleTypeChange = null;
   #handleSubmit = null;
 
-  constructor({ eventListContainer, handleDestroy, handleTypeChange, handleSubmit }) {
+  constructor({ eventListContainer, handleDestroy, handleSubmit }) {
     this.#eventListContainer = eventListContainer;
     this.#handleDestroy = handleDestroy;
-    this.#handleTypeChange = handleTypeChange;
     this.#handleSubmit = handleSubmit;
   }
 
@@ -58,20 +56,10 @@ export default class EventFormPresenter {
   #createForm() {
     return new EventFormView({
       ...this.#eventData,
-      handleTypeChange: this.#handleFormTypeChange,
       handleSubmit: this.#handleFormSubmit,
       handleClose: this.#handleFormClose
     });
   }
-
-  #handleFormTypeChange = (type) => {
-    const prev = this.#formComponent;
-
-    this.#eventData = this.#handleTypeChange(this.#eventData, type);
-    this.#formComponent = this.#createForm();
-
-    replace(this.#formComponent, prev);
-  };
 
   #handleFormSubmit = (pointFromForm) => {
     const pointToSave = pointFromForm;
