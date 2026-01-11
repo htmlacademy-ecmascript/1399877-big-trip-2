@@ -274,10 +274,10 @@ export default class EventFormView extends AbstractStatefulView {
     const currentPoint = this._state.point;
 
     return {
-    ...currentPoint,
-    basePrice: Number.isFinite(basePrice) ? basePrice : 0,
-    dateFrom: dateFromInput?.value ?? currentPoint.dateFrom,
-    dateTo: dateToInput?.value ?? currentPoint.dateTo,
+      ...currentPoint,
+      basePrice: Number.isFinite(basePrice) ? basePrice : 0,
+      dateFrom: dateFromInput?.value ?? currentPoint.dateFrom,
+      dateTo: dateToInput?.value ?? currentPoint.dateTo,
     };
   }
 
@@ -287,7 +287,7 @@ export default class EventFormView extends AbstractStatefulView {
     const destinationInput = form.elements['event-destination'];
     if (destinationInput !== null && destinationInput !== undefined) {
       destinationInput.addEventListener('focus', () => {
-      destinationInput.select();
+        destinationInput.select();
       });
     }
 
