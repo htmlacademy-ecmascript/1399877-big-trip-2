@@ -288,6 +288,7 @@ export default class EventFormView extends AbstractStatefulView {
 
     this.#dateFromPicker = flatpickr(dateFromInput, {
       enableTime: true,
+      // eslint-disable-next-line camelcase
       time_24hr: true,
       dateFormat: 'd/m/y H:i',
       defaultDate: this._state.point.dateFrom,
@@ -312,6 +313,7 @@ export default class EventFormView extends AbstractStatefulView {
     if (dateToInput !== null) {
       this.#dateToPicker = flatpickr(dateToInput, {
         enableTime: true,
+        // eslint-disable-next-line camelcase
         time_24hr: true,
         dateFormat: 'd/m/y H:i',
         defaultDate: this._state.point.dateTo,

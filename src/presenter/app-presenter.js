@@ -193,37 +193,37 @@ export default class AppPresenter {
         sorted.sort((a, b) => (b.basePrice ?? 0) - (a.basePrice ?? 0));
         break;
 
-        case SORT_TYPE.DAY:
-          default:
-            sorted.sort((a, b) => {
-              const diff = this.#toTime(a.dateFrom) - this.#toTime(b.dateFrom);
+      case SORT_TYPE.DAY:
+      default:
+        sorted.sort((a, b) => {
+          const diff = this.#toTime(a.dateFrom) - this.#toTime(b.dateFrom);
 
-              if (diff !== 0) {
-                return diff;
-              }
+          if (diff !== 0) {
+            return diff;
+          }
 
-              const aId = a.id;
-              const bId = b.id;
+          const aId = a.id;
+          const bId = b.id;
 
-              if (aId === null || aId === undefined) {
-                return -1;
-              }
+          if (aId === null || aId === undefined) {
+            return -1;
+          }
 
-              if (bId === null || bId === undefined) {
-                return 1;
-              }
+          if (bId === null || bId === undefined) {
+            return 1;
+          }
 
-              if (aId < bId) {
-                return -1;
-              }
+          if (aId < bId) {
+            return -1;
+          }
 
-              if (aId > bId) {
-                return 1;
-              }
+          if (aId > bId) {
+            return 1;
+          }
 
-              return 0;
-            });
-            break;
+          return 0;
+        });
+        break;
     }
 
     return sorted;
