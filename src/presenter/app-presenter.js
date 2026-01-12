@@ -222,7 +222,6 @@ export default class AppPresenter {
     this.#eventFormPresenter = new EventFormPresenter({
       eventListContainer: this.#eventsListView,
       handleDestroy: this.#handleFormDestroy,
-      handleTypeChange: this.#handleFormTypeChange,
       handleSubmit: this.#handlePointChange
     });
 
@@ -253,16 +252,6 @@ export default class AppPresenter {
     this.#destroyForm();
   };
 
-  #handleFormTypeChange = (prevEventData, nextType) => {
-    const nextPoint = {
-      ...prevEventData.point,
-      type: nextType,
-      offers: []
-    };
-
-    return this.#makeViewData(nextPoint);
-  };
-
   #handlePointChange = (updatedPoint) => {
     this.#pointModel.update(updatedPoint);
 
@@ -285,16 +274,17 @@ export default class AppPresenter {
     }
 
     let destination = null;
-    if (point !== null && point !== undefined) {
-      if (point.destination !== null && point.destination !== undefined) {
-        destination = this.#destinationModel.getById(point.destination);
+    if (this.#destinationModel !== null && this.#destinationModel !== undefined) {
+      if (typeof this.#destinationModel.get === 'function') {
+        destination = this.#destinationModel.get();
       }
     }
 
     let offer = null;
-    if (point !== null && point !== undefined) {
-      if (typeof point.type === 'string') {
-        offer = this.#offerModel.getByType(point.type);
+
+    if (this.#offerModel !== null && this.#offerModel !== undefined) {
+      if (typeof this.#offerModel.get === 'function') {
+        offer = this.#offerModel.get();
       }
     }
 
