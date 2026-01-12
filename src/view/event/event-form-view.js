@@ -1,3 +1,6 @@
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.min.css';
+
 import { formatStringToShortDate, isSelectedOffers } from '../../utils';
 import { FORMAT_DATE, TYPES } from '../../const';
 import AbstractStatefulView from '../../framework/view/abstract-stateful-view';
@@ -246,6 +249,9 @@ export default class EventFormView extends AbstractStatefulView {
   #handleFormSubmit = null;
   #handleFormClose = null;
 
+  #dateFromPicker = null;
+  #dateToPicker = null;
+
   constructor (eventData) {
     super();
 
@@ -259,16 +265,76 @@ export default class EventFormView extends AbstractStatefulView {
     };
 
     this.#setInnerHandlers();
+    this.#initDatepickers();
   }
 
+  #destroyDatepickers() {
+    if (this.#dateFromPicker !== null) {
+      this.#dateFromPicker.destroy();
+      this.#dateFromPicker = null;
+    }
+
+    if (this.#dateToPicker !== null) {
+      this.#dateToPicker.destroy();
+      this.#dateToPicker = null;
+    }
+  }
+
+  #initDatepickers() {
+    this.#destroyDatepickers();
+
+    const dateFromInput = this.element.querySelector(`#event-start-time-${FORM_ID}`);
+    const dateToInput = this.element.querySelector(`#event-end-time-${FORM_ID}`);
+
+    this.#dateFromPicker = flatpickr(dateFromInput, {
+      enableTime: true,
+      time_24hr: true,
+      dateFormat: 'd/m/y H:i',
+      defaultDate: this._state.point.dateFrom,
+      onChange: ([selectedDate]) => {
+        if (selectedDate === undefined) {
+          return;
+        }
+
+        this._setState({
+          point: {
+            ...this._state.point,
+            dateFrom: selectedDate,
+          },
+        });
+
+        if (this.#dateToPicker !== null) {
+          this.#dateToPicker.set('minDate', selectedDate);
+        }
+      },
+    });
+
+    if (dateToInput !== null) {
+      this.#dateToPicker = flatpickr(dateToInput, {
+        enableTime: true,
+        time_24hr: true,
+        dateFormat: 'd/m/y H:i',
+        defaultDate: this._state.point.dateTo,
+        onChange: ([selectedDate]) => {
+          if (selectedDate === undefined) {
+            return;
+          }
+
+          this._setState({
+            point: {
+              ...this._state.point,
+              dateTo: selectedDate,
+            },
+          });
+        },
+      });
+    }
+  }
 
   #getPointFromForm() {
     const form = this.element.querySelector('form');
 
     const basePriceInput = form.elements['event-price'];
-    const dateFromInput = form.elements['event-start-time'];
-    const dateToInput = form.elements['event-end-time'];
-
     const basePrice = Number(basePriceInput?.value ?? 0);
 
     const currentPoint = this._state.point;
@@ -276,8 +342,8 @@ export default class EventFormView extends AbstractStatefulView {
     return {
       ...currentPoint,
       basePrice: Number.isFinite(basePrice) ? basePrice : 0,
-      dateFrom: dateFromInput?.value ?? currentPoint.dateFrom,
-      dateTo: dateToInput?.value ?? currentPoint.dateTo,
+      dateFrom: currentPoint.dateFrom,
+      dateTo: currentPoint.dateTo,
     };
   }
 

@@ -73,7 +73,7 @@ function createEventItemTemplate ({point, destination, offer}) {
   return (
     `<li class="trip-events__item">
       <div class="event">
-        <time class="event__date" datetime="${dateFrom(FORMAT_DATE.DATE_ONLY)}">${dateFrom(FORMAT_DATE.DATE)}</time>
+        <time class="event__date" datetime="${dateFrom(FORMAT_DATE.DATE_ONLY)}">${dateFrom(FORMAT_DATE.DATE).toUpperCase()}</time>
         <div class="event__type">
           <img class="event__type-icon" width="42" height="42" src="img/icons/${point.type}.png" alt="Event type icon">
         </div>
