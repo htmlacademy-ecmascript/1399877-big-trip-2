@@ -322,7 +322,17 @@ export default class AppPresenter {
   };
 
   #handlePointChange = (updatedPoint) => {
-    this.#handleUserAction(USER_ACTION.UPDATE_POINT, updatedPoint);
+    if (updatedPoint === null || updatedPoint === undefined) {
+      return;
+    }
+
+    const id = updatedPoint.id;
+
+    const actionType = (id === null || id === undefined)
+      ? USER_ACTION.ADD_POINT
+      : USER_ACTION.UPDATE_POINT;
+
+    this.#handleUserAction(actionType, updatedPoint);
   };
 
   #handleUserAction(actionType, payload) {
@@ -330,6 +340,13 @@ export default class AppPresenter {
       case USER_ACTION.UPDATE_POINT:
         this.#pointModel.updatePoint(payload);
         this.#filtersPresenter.update();
+        this.#renderEvents();
+        break;
+
+      case USER_ACTION.ADD_POINT:
+        this.#pointModel.addPoint(payload);
+        this.#filtersPresenter.update();
+        this.#destroyForm();
         this.#renderEvents();
         break;
 

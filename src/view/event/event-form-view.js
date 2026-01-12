@@ -339,7 +339,14 @@ export default class EventFormView extends AbstractStatefulView {
     const form = this.element.querySelector('form');
 
     const basePriceInput = form.elements['event-price'];
-    const basePrice = Number(basePriceInput?.value ?? 0);
+    let basePriceValue = '0';
+    if (basePriceInput !== null && basePriceInput !== undefined) {
+      if ('value' in basePriceInput) {
+        basePriceValue = basePriceInput.value;
+      }
+    }
+
+    const basePrice = Number(basePriceValue);
 
     const currentPoint = this._state.point;
 
@@ -354,10 +361,61 @@ export default class EventFormView extends AbstractStatefulView {
   #setInnerHandlers() {
     const form = this.element.querySelector('form');
 
+    const priceInput = form.elements['event-price'];
+    if (priceInput !== null && priceInput !== undefined) {
+      priceInput.addEventListener('input', () => {
+        const value = String(priceInput.value);
+
+        const nextValue = value.replace(/[^0-9]/g, '');
+
+        if (nextValue !== value) {
+          priceInput.value = nextValue;
+        }
+      });
+    }
+
     const destinationInput = form.elements['event-destination'];
     if (destinationInput !== null && destinationInput !== undefined) {
       destinationInput.addEventListener('focus', () => {
         destinationInput.select();
+      });
+    }
+
+    if (destinationInput !== null && destinationInput !== undefined) {
+      destinationInput.addEventListener('blur', () => {
+        const nextName = destinationInput.value;
+
+        const destinationSource = this._state.destination;
+        if (!Array.isArray(destinationSource)) {
+          return;
+        }
+
+        const matched = destinationSource.find((item) => {
+          if (item === null || item === undefined) {
+            return false;
+          }
+          return item.name === nextName;
+        });
+
+        if (matched !== undefined) {
+          return;
+        }
+
+        const currentPoint = this._state.point;
+        const currentId = currentPoint.destination;
+
+        const currentDestination = destinationSource.find((item) => {
+          if (item === null || item === undefined) {
+            return false;
+          }
+          return item.id === currentId;
+        });
+
+        if (currentDestination !== undefined && typeof currentDestination.name === 'string') {
+          destinationInput.value = currentDestination.name;
+        } else {
+          destinationInput.value = '';
+        }
       });
     }
 

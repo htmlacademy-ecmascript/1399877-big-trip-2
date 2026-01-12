@@ -16,17 +16,55 @@ export default class PointModel {
     this.points = points.slice();
   }
 
+  addPoint(point) {
+    if (point === null || point === undefined) {
+      throw new Error('PointModel.addPoint: point must not be null or undefined');
+    }
+
+    if (typeof point !== 'object') {
+      throw new Error('PointModel.addPoint: point must be an object');
+    }
+
+    let nextBasePrice = 0;
+    const rawPrice = point.basePrice;
+
+    if (typeof rawPrice === 'number' && Number.isFinite(rawPrice) && rawPrice >= 0) {
+      nextBasePrice = rawPrice;
+    }
+
+    const normalizedPoint = {
+      ...point,
+      basePrice: nextBasePrice,
+    };
+
+    this.points = [normalizedPoint, ...this.points];
+
+  }
+
   updatePoint(updatedPoint) {
-    if (updatedPoint === null) {
-      throw new Error('PointModel.updatePoint: updatedPoint must not be null');
+    if (updatedPoint === null || updatedPoint === undefined) {
+      return;
     }
 
-    if (typeof updatedPoint !== 'object') {
-      throw new Error('PointModel.updatePoint: updatedPoint must be an object');
+    const id = updatedPoint.id;
+    if (id === null || id === undefined) {
+      return;
     }
 
-    this.points = this.points.map((p) =>
-      p.id === updatedPoint.id ? updatedPoint : p
+    let nextBasePrice = 0;
+    const rawPrice = updatedPoint.basePrice;
+
+    if (typeof rawPrice === 'number' && Number.isFinite(rawPrice) && rawPrice >= 0) {
+      nextBasePrice = rawPrice;
+    }
+
+    const normalizedPoint = {
+      ...updatedPoint,
+      basePrice: nextBasePrice,
+    };
+
+    this.points = this.points.map((point) =>
+      point.id === id ? normalizedPoint : point
     );
   }
 
