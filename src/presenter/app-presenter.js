@@ -1,12 +1,17 @@
-import { render, replace, RenderPosition } from '../framework/render';
+import { render, remove, replace, RenderPosition } from '../framework/render';
+
 import EventPresenter from './event-presenter';
 import FiltersPresenter from './filters-presenter';
+import EventFormPresenter from './event-form-presenter';
+
 import SortListView from '../view/sort-list-view';
 import EventsListView from '../view/event/events-list-view';
-import { BLANK_POINT, FILTER_TYPES, SORT_TYPE } from '../const';
 import TripInfoView from '../view/header/trip-info-view';
-import EventFormPresenter from './event-form-presenter';
+import ListMessageView from '../view/list-message-view';
+
 import { filter } from '../utils';
+import { BLANK_POINT, FILTER_TYPES, SORT_TYPE, USER_ACTION } from '../const';
+
 
 export default class AppPresenter {
   #headerContainer = null;
@@ -15,10 +20,12 @@ export default class AppPresenter {
 
   #tripInfoView = null;
   #eventsListView = null;
+  #listMessageView = null;
 
   #pointModel = null;
   #offerModel = null;
   #destinationModel = null;
+  #filterModel = null;
 
   #eventPresenters = new Map();
 
@@ -38,7 +45,8 @@ export default class AppPresenter {
     mainContainer,
     pointModel,
     destinationModel,
-    offerModel
+    offerModel,
+    filterModel
   }) {
     this.#headerContainer = headerContainer;
     this.#filtersContainer = filtersContainer;
@@ -47,6 +55,7 @@ export default class AppPresenter {
     this.#pointModel = pointModel;
     this.#destinationModel = destinationModel;
     this.#offerModel = offerModel;
+    this.#filterModel = filterModel;
 
     this.#tripInfoView = new TripInfoView();
     this.#eventsListView = new EventsListView();
@@ -67,9 +76,9 @@ export default class AppPresenter {
   #initFilters() {
     this.#filtersPresenter = new FiltersPresenter({
       filtersContainer: this.#filtersContainer,
-      currentFilter: FILTER_TYPES.EVERYTHING,
       handleFilterChange: this.#handleFilterChange,
-      getPoints: () => this.#pointModel.get()
+      getPoints: () => this.#pointModel.getPoints(),
+      filterModel: this.#filterModel
     });
 
     this.#filtersPresenter.init();
@@ -110,6 +119,27 @@ export default class AppPresenter {
     this.#clearEvents();
 
     const eventsForRender = this.#getEventsForRender();
+
+    if (eventsForRender.length === 0) {
+      const prevEmpty = this.#listMessageView;
+
+      const message = 'There are no events now';
+      this.#listMessageView = new ListMessageView(message);
+
+      if (prevEmpty === null) {
+        render(this.#listMessageView, this.#mainContainer);
+      } else {
+        replace(this.#listMessageView, prevEmpty);
+      }
+
+      return;
+    }
+
+    if (this.#listMessageView !== null) {
+      remove(this.#listMessageView);
+      this.#listMessageView = null;
+    }
+
     for (const eventData of eventsForRender) {
       this.#renderEvent(eventData);
     }
@@ -123,7 +153,6 @@ export default class AppPresenter {
     });
 
     presenter.init(eventData);
-
 
     const id = eventData.point.id;
     if (this.#hasValue(id)) {
@@ -144,12 +173,12 @@ export default class AppPresenter {
   }
 
   #getEventsForRender() {
-    const currentFilter = this.#filtersPresenter.getCurrentFilter();
+    const currentFilter = this.#filterModel.getFilter();
     const filterFn = filter[currentFilter];
 
     const filteredPoints = typeof filterFn === 'function'
-      ? filterFn(this.#pointModel.get())
-      : [...this.#pointModel.get()];
+      ? filterFn(this.#pointModel.getPoints())
+      : [...this.#pointModel.getPoints()];
 
     const sortedPoints = this.#sortPoints(filteredPoints);
     return sortedPoints.map((point) => this.#makeViewData(point));
@@ -239,7 +268,7 @@ export default class AppPresenter {
   };
 
   #handleOpenEditForm = (pointId, eventView) => {
-    const point = this.#pointModel.get().find((p) => p.id === pointId);
+    const point = this.#pointModel.getPoints().find((p) => p.id === pointId);
     if (point === undefined) {
       return;
     }
@@ -259,7 +288,10 @@ export default class AppPresenter {
     this.#eventFormPresenter = new EventFormPresenter({
       eventListContainer: this.#eventsListView,
       handleDestroy: this.#handleFormDestroy,
-      handleSubmit: this.#handlePointChange
+      handleSubmit: this.#handlePointChange,
+      handleDelete: (pointToDelete) => {
+        this.#handleUserAction(USER_ACTION.DELETE_POINT, pointToDelete);
+      }
     });
 
     this.#eventFormPresenter.open(eventData, replaceTarget);
@@ -290,12 +322,42 @@ export default class AppPresenter {
   };
 
   #handlePointChange = (updatedPoint) => {
-    this.#pointModel.update(updatedPoint);
-
-    this.#filtersPresenter.update();
-
-    this.#renderEvents();
+    this.#handleUserAction(USER_ACTION.UPDATE_POINT, updatedPoint);
   };
+
+  #handleUserAction(actionType, payload) {
+    switch (actionType) {
+      case USER_ACTION.UPDATE_POINT:
+        this.#pointModel.updatePoint(payload);
+        this.#filtersPresenter.update();
+        this.#renderEvents();
+        break;
+
+      case USER_ACTION.DELETE_POINT: {
+        const point = payload;
+
+        if (point === null || point === undefined) {
+          return;
+        }
+
+        const id = point.id;
+
+        if (id === null || id === undefined) {
+          return;
+        }
+
+        this.#pointModel.deletePoint(id);
+
+        this.#filtersPresenter.update();
+        this.#destroyForm();
+        this.#renderEvents();
+        break;
+      }
+
+      default:
+        throw new Error(`Unknown action type: ${actionType}`);
+    }
+  }
 
   #makeViewData(data) {
     let point = null;

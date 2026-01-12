@@ -10,13 +10,14 @@ export default class EventFormPresenter {
 
   #handleDestroy = null;
   #handleSubmit = null;
+  #handleDelete = null;
 
-  constructor({ eventListContainer, handleDestroy, handleSubmit }) {
+  constructor({ eventListContainer, handleDestroy, handleSubmit, handleDelete }) {
     this.#eventListContainer = eventListContainer;
     this.#handleDestroy = handleDestroy;
     this.#handleSubmit = handleSubmit;
+    this.#handleDelete = handleDelete;
   }
-
 
   open(eventData, replaceTarget = null) {
     this.destroy();
@@ -57,7 +58,8 @@ export default class EventFormPresenter {
     return new EventFormView({
       ...this.#eventData,
       handleSubmit: this.#handleFormSubmit,
-      handleClose: this.#handleFormClose
+      handleClose: this.#handleFormClose,
+      handleDelete: this.#handleFormDelete
     });
   }
 
@@ -68,6 +70,20 @@ export default class EventFormPresenter {
 
     if (typeof this.#handleSubmit === 'function') {
       this.#handleSubmit(pointToSave);
+    }
+
+    if (typeof this.#handleDestroy === 'function') {
+      this.#handleDestroy();
+    }
+  };
+
+  #handleFormDelete = (pointFromForm) => {
+    const pointToDelete = pointFromForm;
+
+    this.destroy();
+
+    if (typeof this.#handleDelete === 'function') {
+      this.#handleDelete(pointToDelete);
     }
 
     if (typeof this.#handleDestroy === 'function') {

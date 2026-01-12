@@ -247,6 +247,7 @@ function createEditItemEventTemplate({ point, offer, destination, destinations }
 export default class EventFormView extends AbstractStatefulView {
 
   #handleFormSubmit = null;
+  #handleFormDelete = null;
   #handleFormClose = null;
 
   #dateFromPicker = null;
@@ -256,6 +257,7 @@ export default class EventFormView extends AbstractStatefulView {
     super();
 
     this.#handleFormSubmit = eventData.handleSubmit;
+    this.#handleFormDelete = eventData.handleDelete;
     this.#handleFormClose = eventData.handleClose;
 
     this._state = {
@@ -426,9 +428,24 @@ export default class EventFormView extends AbstractStatefulView {
     if (resetButton !== null) {
       resetButton.addEventListener('click', (evt) => {
         evt.preventDefault();
+
+        const point = this._state.point;
+
+        const isEditForm = point !== null && point !== undefined
+          && point.id !== null && point.id !== undefined;
+
+        if (isEditForm) {
+          if (typeof this.#handleFormDelete === 'function') {
+            const pointToDelete = this.#getPointFromForm();
+            this.#handleFormDelete(pointToDelete);
+          }
+          return;
+        }
+
         this.#handleFormClose();
       });
     }
+
   }
 
   get template() {
