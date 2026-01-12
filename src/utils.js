@@ -1,9 +1,6 @@
 import dayjs from 'dayjs';
-import duration from 'dayjs/plugin/duration';
 import {CITIES} from './mock/const';
 import { FILTER_TYPES } from './const';
-
-dayjs.extend(duration);
 
 export function getRandomInteger(a = 0, b = 1){
   const lower = Math.ceil(Math.min(a, b));
@@ -20,31 +17,48 @@ export function formatStringToShortDate(date, formatDate) {
   return dayjs(date).format(formatDate);
 }
 
-export function callcDate(dateFrom,dateTo){
+export function callcDate(dateFrom, dateTo) {
+  if (dateFrom === null || dateFrom === undefined) {
+    return '';
+  }
+
+  if (dateTo === null || dateTo === undefined) {
+    return '';
+  }
+
   const from = dayjs(dateFrom);
   const to = dayjs(dateTo);
-  const diff = to.diff(from);
-  const d = dayjs.duration(diff);
-  const days = d.days();
-  const hours = d.hours();
-  const minutes = d.minutes();
 
-  const parts = [];
-
-  if (days > 0) {
-    parts.push(`${days}D`);
+  if (from.isValid() === false || to.isValid() === false) {
+    return '';
   }
 
-  if (hours > 0 || days > 0) {
-    const hoursStr = String(hours).padStart(2, '0');
-    parts.push(`${hoursStr}H`);
+  const diffMinutes = to.diff(from, 'minute');
+
+  if (diffMinutes < 0) {
+    return '';
   }
 
+  const MINUTES_IN_HOUR = 60;
+  const MINUTES_IN_DAY = 24 * MINUTES_IN_HOUR;
+
+  const days = Math.floor(diffMinutes / MINUTES_IN_DAY);
+  const hours = Math.floor((diffMinutes % MINUTES_IN_DAY) / MINUTES_IN_HOUR);
+  const minutes = diffMinutes % MINUTES_IN_HOUR;
+
+  if (days === 0 && hours === 0) {
+    return `${minutes}M`;
+  }
+
+  const hoursStr = String(hours).padStart(2, '0');
   const minutesStr = String(minutes).padStart(2, '0');
-  parts.push(`${minutesStr}M`);
 
-  return parts.join(' ');
+  if (days === 0) {
+    return `${hoursStr}H ${minutesStr}M`;
+  }
 
+  const daysStr = String(days).padStart(2, '0');
+  return `${daysStr}D ${hoursStr}H ${minutesStr}M`;
 }
 
 export function createDataListCities () {
@@ -63,9 +77,49 @@ export function isEditMode (point) {
   return Boolean(point.id);
 }
 
-const isDateFuture = (dateFrom) => dayjs().isBefore(dateFrom);
-const isDatePast = (dateTo) => dayjs().isAfter(dateTo);
-const isDatePresent = (dateFrom, dateTo) => dayjs().isAfter(dateFrom) && dayjs().isBefore(dateTo);
+const toMs = (value) => {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  const ms = new Date(value).getTime();
+
+  if (Number.isNaN(ms)) {
+    return null;
+  }
+
+  return ms;
+};
+
+const isDateFuture = (dateFrom) => {
+  const start = toMs(dateFrom);
+  if (start === null) {
+    return false;
+  }
+
+  return Date.now() < start;
+};
+
+const isDatePast = (dateTo) => {
+  const end = toMs(dateTo);
+  if (end === null) {
+    return false;
+  }
+
+  return Date.now() > end;
+};
+
+const isDatePresent = (dateFrom, dateTo) => {
+  const start = toMs(dateFrom);
+  const end = toMs(dateTo);
+
+  if (start === null || end === null) {
+    return false;
+  }
+
+  const now = Date.now();
+  return now >= start && now <= end;
+};
 
 export const filter = {
   [FILTER_TYPES.EVERYTHING]: (points) => [...points],

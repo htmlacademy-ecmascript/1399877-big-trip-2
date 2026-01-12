@@ -156,7 +156,17 @@ export default class AppPresenter {
   }
 
   #toTime(date) {
-    return date ? new Date(date).getTime() : 0;
+    if (date === null || date === undefined) {
+      return 0;
+    }
+
+    const time = new Date(date).getTime();
+
+    if (Number.isNaN(time)) {
+      return 0;
+    }
+
+    return time;
   }
 
   #getDuration(point) {
@@ -185,7 +195,34 @@ export default class AppPresenter {
 
       case SORT_TYPE.DAY:
       default:
-        sorted.sort((a, b) => this.#toTime(a.dateFrom) - this.#toTime(b.dateFrom));
+        sorted.sort((a, b) => {
+          const diff = this.#toTime(a.dateFrom) - this.#toTime(b.dateFrom);
+
+          if (diff !== 0) {
+            return diff;
+          }
+
+          const aId = a.id;
+          const bId = b.id;
+
+          if (aId === null || aId === undefined) {
+            return -1;
+          }
+
+          if (bId === null || bId === undefined) {
+            return 1;
+          }
+
+          if (aId < bId) {
+            return -1;
+          }
+
+          if (aId > bId) {
+            return 1;
+          }
+
+          return 0;
+        });
         break;
     }
 
