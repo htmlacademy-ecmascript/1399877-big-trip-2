@@ -123,7 +123,18 @@ export default class AppPresenter {
     if (eventsForRender.length === 0) {
       const prevEmpty = this.#listMessageView;
 
-      const message = 'There are no events now';
+      const currentFilter = this.#filterModel.getFilter();
+
+      let message = 'There are no events now';
+
+      if (currentFilter === FILTER_TYPES.PAST) {
+        message = 'There are no past events now';
+      }
+
+      if (currentFilter === FILTER_TYPES.FUTURE) {
+        message = 'There are no future events now';
+      }
+
       this.#listMessageView = new ListMessageView(message);
 
       if (prevEmpty === null) {
@@ -343,12 +354,36 @@ export default class AppPresenter {
         this.#renderEvents();
         break;
 
-      case USER_ACTION.ADD_POINT:
-        this.#pointModel.addPoint(payload);
+      case USER_ACTION.ADD_POINT: {
+        const point = payload;
+
+        if (point === null || point === undefined) {
+          return;
+        }
+
+        let dateFrom = point.dateFrom;
+        let dateTo = point.dateTo;
+
+        if (dateFrom === null || dateFrom === undefined) {
+          dateFrom = new Date();
+        }
+
+        if (dateTo === null || dateTo === undefined) {
+          dateTo = new Date(dateFrom.getTime() + 60 * 60 * 1000);
+        }
+
+        const pointToAdd = {
+          ...point,
+          dateFrom,
+          dateTo,
+        };
+
+        this.#pointModel.addPoint(pointToAdd);
         this.#filtersPresenter.update();
         this.#destroyForm();
         this.#renderEvents();
         break;
+      }
 
       case USER_ACTION.DELETE_POINT: {
         const point = payload;
