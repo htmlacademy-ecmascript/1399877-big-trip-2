@@ -73,8 +73,8 @@ export default class EventPresenter {
   #createEventItem() {
     return new EventItemView({
       point: this.#eventData.point,
-      destination: this.#eventData.destination,
-      offer: this.#eventData.offer,
+      destinations: this.#eventData.destinations,
+      offers: this.#eventData.offers,
       handleFavoriteClick: this.#handleFavoriteClick,
       handleEditClick: this.#handleEditClick
     });

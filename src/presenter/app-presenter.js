@@ -165,22 +165,14 @@ export default class AppPresenter {
 
     presenter.init(eventData);
 
-    const id = eventData.point.id;
-    if (this.#hasValue(id)) {
-      this.#eventPresenters.set(id, presenter);
-    }
+    this.#eventPresenters.set(eventData.point.id, presenter);
   }
 
   #clearEvents() {
     this.#eventPresenters.forEach((presenter) => presenter.destroy());
     this.#eventPresenters.clear();
 
-    const container = this.#eventsListView?.element;
-    if (!container) {
-      return;
-    }
-
-    container.replaceChildren();
+    this.#eventsListView.element.replaceChildren();
   }
 
   #getEventsForRender() {
@@ -411,35 +403,12 @@ export default class AppPresenter {
     }
   }
 
-  #makeViewData(data) {
-    let point = null;
-
-    if (data !== null && data !== undefined && typeof data === 'object') {
-      if ('point' in data) {
-        point = data.point;
-      } else {
-        point = data;
-      }
-    } else {
-      point = data;
-    }
-
-    let destination = null;
-    if (this.#destinationModel !== null && this.#destinationModel !== undefined) {
-      if (typeof this.#destinationModel.get === 'function') {
-        destination = this.#destinationModel.get();
-      }
-    }
-
-    let offer = null;
-
-    if (this.#offerModel !== null && this.#offerModel !== undefined) {
-      if (typeof this.#offerModel.get === 'function') {
-        offer = this.#offerModel.get();
-      }
-    }
-
-    return { point, destination, offer };
+  #makeViewData(point) {
+    return {
+      point,
+      destinations: this.#destinationModel.get(),
+      offers: this.#offerModel.get(),
+    };
   }
 
   #setEscKeyDownHandler() {
