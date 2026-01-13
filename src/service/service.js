@@ -20,7 +20,7 @@ export default class Service {
   }
 
   generatePoints () {
-    return Array.from({length: getRandomInteger(2, 5)}, () => {
+    return Array.from({length: getRandomInteger(0, 5)}, () => {
       const type = getRandomValue(TYPES);
       const typeOfffers = this.offers.find((offerType) => offerType.type === type);
       const destinationId = getRandomValue(this.destination).id;

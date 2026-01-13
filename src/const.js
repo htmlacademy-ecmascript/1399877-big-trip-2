@@ -42,3 +42,9 @@ export const SORT_TYPE = {
   PRICE: 'price',
   OFFERS: 'offers'
 };
+
+export const USER_ACTION = {
+  UPDATE_POINT: 'UPDATE_POINT',
+  ADD_POINT: 'ADD_POINT',
+  DELETE_POINT: 'DELETE_POINT'
+};

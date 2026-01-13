@@ -1,22 +1,22 @@
 import { render, replace } from '../framework/render';
 import FiltersView from '../view/filters-view';
-import { FILTER_TYPES } from '../const';
 import { getFiltersAvailability } from '../utils';
 
 export default class FiltersPresenter {
+  #filterModel = null;
+
   #filtersContainer = null;
   #getPoints = null;
 
-  #currentFilter = FILTER_TYPES.EVERYTHING;
   #handleFilterChange = null;
 
   #filtersComponent = null;
 
-  constructor({ filtersContainer, currentFilter, handleFilterChange, getPoints }) {
+  constructor({ filtersContainer, handleFilterChange, getPoints, filterModel }) {
     this.#filtersContainer = filtersContainer;
-    this.#currentFilter = currentFilter;
     this.#handleFilterChange = handleFilterChange;
     this.#getPoints = getPoints;
+    this.#filterModel = filterModel;
   }
 
   init() {
@@ -37,15 +37,18 @@ export default class FiltersPresenter {
   }
 
   getCurrentFilter() {
-    return this.#currentFilter;
+    return this.#filterModel.getFilter();
   }
 
   setFilter(nextFilter) {
-    if (this.#currentFilter === nextFilter) {
+    const currentFilter = this.#filterModel.getFilter();
+
+    if (currentFilter === nextFilter) {
       return;
     }
 
-    this.#currentFilter = nextFilter;
+    this.#filterModel.setFilter(nextFilter);
+
     this.#handleFilterChange(nextFilter);
     this.init();
   }
@@ -55,7 +58,7 @@ export default class FiltersPresenter {
     const filtersAvailability = getFiltersAvailability(points);
 
     return new FiltersView({
-      currentFilter: this.#currentFilter,
+      currentFilter: this.#filterModel.getFilter(),
       filtersAvailability,
       handleFilterChange: this.#handleViewFilterChange
     });
